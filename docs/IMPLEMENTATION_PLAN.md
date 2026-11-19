@@ -1,6 +1,12 @@
 # 구현 계획
 
-`IMPLEMENTATION_GUIDE.md` §11을 단계별로 나눈 체크리스트다. 단계 하나가 Issue 하나, PR 하나에 해당한다. 각 항목은 실패하는 테스트를 먼저 쓴다.
+`IMPLEMENTATION_GUIDE.md` §11을 단계별로 나눈 체크리스트다. 각 항목은 실패하는 테스트를 먼저 쓴다.
+
+진행 순서: 1 → 2 → 3 → 4 → 5 → 첫 배포(8단계의 최소 버전: Dockerfile, EC2 수동 배포) → 6 → 7 → 8 나머지 → 9 → 10.
+
+PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포는 PR 하나(`feat/query-first-deploy`). 그 뒤는 단계별로 정한다.
+커밋은 기능(`feat:`)과 테스트(`test:`)를 나눈다. 모든 커밋에서 빌드와 테스트가 통과해야 하므로 기능 커밋 다음에 그 테스트 커밋을 둔다.
+동작하는 접수·체결을 먼저 보여주기 위한 순서다. 7단계(복구) 전에는 재시작하면 메모리 호가창이 비므로, 첫 배포 환경은 재배포할 때마다 데모 데이터를 초기화한다.
 
 ## 0. 초기 설정
 - [x] Git 저장소, CLAUDE.md, ADR 0001~0005
@@ -11,8 +17,8 @@
 - [x] PR CI(GitHub Actions, 테스트 실행)
 
 ## 1. 스키마와 seed
-- [ ] `V1__init.sql`: symbols(status), accounts, holdings, orders(RECEIVED, seq), trades, notifications(trade_id NULL 허용, type), CHECK 제약, 인덱스
-- [ ] 시험 계좌·종목 seed(명시적 실행만, 배포 시 자동 실행 금지)
+- [x] `V1__init.sql`: symbols(status), accounts, holdings, orders(RECEIVED, seq), trades, notifications(trade_id NULL 허용, type), CHECK 제약, 인덱스
+- [x] 시험 계좌·종목 seed(명시적 실행만, 배포 시 자동 실행 금지)
 
 ## 2. 순수 도메인 (DB 없음)
 - [ ] `OrderBook`: 가격-시간(seq) 우선, 부분 체결, 잔량 갱신
