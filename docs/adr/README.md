@@ -9,5 +9,9 @@
 | [0003](0003-notification-id-and-account-lock.md) | 알림은 전역 AUTO_INCREMENT + INSERT 전 계좌 잠금 | 채택 |
 | [0004](0004-no-admission-rejection-under-burst.md) | 순간 폭주에서 접수 단계 혼잡 거절을 하지 않는다 | 채택 |
 | [0005](0005-delivery-failure-handling-and-monitor.md) | 대기열 전달 실패는 즉시 처리하고, 주기 감시는 상태 불일치만 본다 | 채택 |
+| [0006](0006-integer-money-and-holding-quantity.md) | 금액은 원 단위 정수, 보유는 총보유량과 예약 수량으로 저장 | 채택 |
+| [0007](0007-match-plan-and-t2-confirm-service.md) | 체결은 불변 계획 → T2 확정 서비스 → 커밋 후 호가창 반영 | 채택 |
+| [0008](0008-symbol-engine-starts-in-overflow-mode.md) | 종목 엔진은 DB에서 복원하고 넘침 상태로 시작한다 | 채택 |
+| [0009](0009-lock-order-and-notification-unit.md) | 잠금 순서는 계좌 행 → 보유 행, 알림은 체결 1건당 계좌별 1행 | 채택 (0003 ⑤ 보완) |
 
 양식: 상태 / 맥락 / 결정 / 근거 / 결과와 비용 / 검증 / 재검토 조건
