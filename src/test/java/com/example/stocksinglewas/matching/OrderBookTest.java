@@ -27,7 +27,7 @@ class OrderBookTest {
     // --- plan: 체결 계획 생성 ---
 
     @Test
-    void restsWholeOrderWhenNoCounterparty() {
+    void 상대가_없으면_주문_전체가_대기_등록된다() {
         MatchPlan plan = book.plan(incoming(1, 10, BUY, 1000, 5), 1);
 
         assertThat(plan.fills()).isEmpty();
@@ -39,7 +39,7 @@ class OrderBookTest {
     }
 
     @Test
-    void doesNotMatchWhenPricesDoNotCross() {
+    void 가격이_맞지_않으면_체결되지_않는다() {
         book.add(resting(1, 10, SELL, 1010, 5, 1));
 
         MatchPlan plan = book.plan(incoming(2, 20, BUY, 1000, 5), 2);
@@ -49,7 +49,7 @@ class OrderBookTest {
     }
 
     @Test
-    void buyMatchesLowestAskFirst() {
+    void 매수는_가장_낮은_매도호가부터_체결된다() {
         book.add(resting(1, 10, SELL, 1020, 5, 1));
         book.add(resting(2, 11, SELL, 1000, 5, 2));
 
@@ -59,7 +59,7 @@ class OrderBookTest {
     }
 
     @Test
-    void sellMatchesHighestBidFirst() {
+    void 매도는_가장_높은_매수호가부터_체결된다() {
         book.add(resting(1, 10, BUY, 1000, 5, 1));
         book.add(resting(2, 11, BUY, 1020, 5, 2));
 
@@ -69,7 +69,7 @@ class OrderBookTest {
     }
 
     @Test
-    void samePriceMatchesLowerSeqFirst() {
+    void 같은_가격이면_처리순번이_빠른_주문부터_체결된다() {
         book.add(resting(7, 10, SELL, 1000, 5, 9));
         book.add(resting(8, 11, SELL, 1000, 5, 4));
 
@@ -79,7 +79,7 @@ class OrderBookTest {
     }
 
     @Test
-    void tradesAtRestingOrderPriceAndKeepsBuyerLimit() {
+    void 체결가는_먼저_대기한_주문의_가격이고_매수_지정가를_함께_기록한다() {
         book.add(resting(1, 10, SELL, 1000, 5, 1));
 
         MatchPlan plan = book.plan(incoming(2, 20, BUY, 1100, 5), 2);
@@ -88,7 +88,7 @@ class OrderBookTest {
     }
 
     @Test
-    void oneIncomingOrderFillsAgainstSeveralCounterparties() {
+    void 주문_하나가_여러_상대와_나눠_체결된다() {
         book.add(resting(1, 10, SELL, 1000, 30, 1));
         book.add(resting(2, 11, SELL, 1000, 70, 2));
         book.add(resting(3, 12, SELL, 1000, 50, 3));
@@ -102,7 +102,7 @@ class OrderBookTest {
     }
 
     @Test
-    void restsRemainderAfterConsumingAllCrossingOrders() {
+    void 체결_가능한_상대를_모두_쓰면_남은_수량이_대기_등록된다() {
         book.add(resting(1, 10, SELL, 1000, 30, 1));
         book.add(resting(2, 11, SELL, 1100, 30, 2));
 
@@ -115,7 +115,7 @@ class OrderBookTest {
     }
 
     @Test
-    void planDoesNotChangeBook() {
+    void 체결계획을_만들어도_호가창은_바뀌지_않는다() {
         book.add(resting(1, 10, SELL, 1000, 30, 1));
         book.add(resting(2, 11, SELL, 1000, 70, 2));
         List<RestingOrder> before = book.orders(SELL);
@@ -128,7 +128,7 @@ class OrderBookTest {
     }
 
     @Test
-    void planListsRelatedAccountsAscendingWithoutDuplicates() {
+    void 체결계획의_관련_계좌는_중복_없이_오름차순이다() {
         book.add(resting(1, 30, SELL, 1000, 10, 1));
         book.add(resting(2, 10, SELL, 1000, 10, 2));
         book.add(resting(3, 30, SELL, 1000, 10, 3));
@@ -139,7 +139,7 @@ class OrderBookTest {
     }
 
     @Test
-    void planForUnmatchedOrderStillListsItsAccount() {
+    void 체결이_없어도_주문한_계좌는_관련_계좌에_들어간다() {
         MatchPlan plan = book.plan(incoming(1, 20, BUY, 1000, 5), 1);
 
         assertThat(plan.accountIds()).containsExactly(20L);
@@ -148,7 +148,7 @@ class OrderBookTest {
     // --- apply: 커밋 후 반영 ---
 
     @Test
-    void partiallyFilledCounterpartyKeepsOriginalPriority() {
+    void 부분_체결된_상대_주문은_원래_우선순위를_유지한다() {
         book.add(resting(1, 10, SELL, 1000, 50, 1));
         book.add(resting(2, 11, SELL, 1000, 50, 2));
 
@@ -160,7 +160,7 @@ class OrderBookTest {
     }
 
     @Test
-    void removesFullyFilledCounterparties() {
+    void 전량_체결된_상대_주문은_호가창에서_빠진다() {
         book.add(resting(1, 10, SELL, 1000, 30, 1));
         book.add(resting(2, 11, SELL, 1000, 70, 2));
 
@@ -171,7 +171,7 @@ class OrderBookTest {
     }
 
     @Test
-    void rejectsStalePlanAndLeavesBookUnchanged() {
+    void 호가창이_바뀐_뒤의_오래된_계획은_반영을_거부하고_호가창을_그대로_둔다() {
         book.add(resting(1, 10, SELL, 1000, 30, 1));
         MatchPlan first = book.plan(incoming(2, 20, BUY, 1000, 10), 2);
         MatchPlan stale = book.plan(incoming(3, 21, BUY, 1000, 10), 3);
@@ -186,7 +186,7 @@ class OrderBookTest {
     // --- add: 복구 시 잔여 주문 등록 ---
 
     @Test
-    void addRestoresOrdersByPriceThenSeq() {
+    void 복원한_대기_주문은_가격_다음_처리순번_순으로_정렬된다() {
         book.add(resting(5, 10, BUY, 1000, 5, 8));
         book.add(resting(6, 11, BUY, 1010, 5, 9));
         book.add(resting(7, 12, BUY, 1000, 5, 3));
@@ -195,7 +195,7 @@ class OrderBookTest {
     }
 
     @Test
-    void rejectsDuplicateOrderId() {
+    void 같은_주문번호는_두_번_등록할_수_없다() {
         book.add(resting(1, 10, BUY, 1000, 5, 1));
 
         assertThatThrownBy(() -> book.add(resting(1, 10, BUY, 1000, 5, 2)))
@@ -203,7 +203,7 @@ class OrderBookTest {
     }
 
     @Test
-    void rejectsDuplicateSeq() {
+    void 같은_처리순번은_두_번_등록할_수_없다() {
         book.add(resting(1, 10, BUY, 1000, 5, 1));
 
         assertThatThrownBy(() -> book.add(resting(2, 10, SELL, 1100, 5, 1)))
@@ -213,7 +213,7 @@ class OrderBookTest {
     // --- 입력 검증 ---
 
     @Test
-    void rejectsNonPositivePriceOrQuantity() {
+    void 가격이나_수량이_0_이하면_거절한다() {
         assertThatThrownBy(() -> incoming(1, 10, BUY, 0, 5)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> incoming(1, 10, BUY, 1000, 0)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> resting(1, 10, BUY, 1000, 0, 1)).isInstanceOf(IllegalArgumentException.class);

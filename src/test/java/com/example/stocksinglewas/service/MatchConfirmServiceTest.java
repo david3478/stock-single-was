@@ -87,7 +87,7 @@ class MatchConfirmServiceTest extends MySqlIntegrationTest {
     // --- 성공 ---
 
     @Test
-    void fullFillSettlesBothAccountsAndRecordsTradeAndNotifications() {
+    void 전량_체결되면_양쪽_계좌를_정산하고_체결과_알림을_저장한다() {
         long sell = rest(SELLER, "s1", SELL, 1_000, 5, 1);
         long buy = place(BUYER, "b1", BUY, 1_100, 5);
 
@@ -115,7 +115,7 @@ class MatchConfirmServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void noCounterpartyRegistersOpenOrderAndNotifiesWithoutTrade() {
+    void 상대가_없으면_대기_등록하고_체결_없는_알림을_저장한다() {
         long buy = place(BUYER, "b1", BUY, 1_000, 5);
 
         confirm.confirm("AAA", planFor(buy, 1));
@@ -131,7 +131,7 @@ class MatchConfirmServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void oneOrderAgainstSeveralCounterpartiesLeavesLastPartiallyFilled() {
+    void 여러_상대와_체결되면_마지막_상대가_부분_체결로_남는다() {
         long first = rest(SELLER, "s1", SELL, 1_000, 3, 1);
         long second = rest(SELLER2, "s2", SELL, 1_000, 4, 2);
         long buy = place(BUYER, "b1", BUY, 1_000, 5);
@@ -149,7 +149,7 @@ class MatchConfirmServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void incomingRemainderRestsAsPartiallyFilled() {
+    void 들어온_주문의_남은_수량은_부분_체결_상태로_대기한다() {
         rest(SELLER, "s1", SELL, 1_000, 3, 1);
         long buy = place(BUYER, "b1", BUY, 1_000, 5);
 
@@ -161,7 +161,7 @@ class MatchConfirmServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void sellIntoRestingBuyPaysAtBuyPrice() {
+    void 대기_중인_매수에_매도하면_매수_가격으로_체결된다() {
         long buy = rest(BUYER, "b1", BUY, 1_200, 5, 1);
         long sell = place(SELLER, "s1", SELL, 1_000, 5);
 
@@ -176,7 +176,7 @@ class MatchConfirmServiceTest extends MySqlIntegrationTest {
     // --- 실패: 아무것도 바뀌지 않는다 ---
 
     @Test
-    void returnsFalseAndChangesNothingWhenIncomingWasAlreadyProcessed() {
+    void 이미_처리된_주문이면_아무것도_바꾸지_않고_false를_돌려준다() {
         rest(SELLER, "s1", SELL, 1_000, 5, 1);
         long buy = place(BUYER, "b1", BUY, 1_000, 5);
         MatchPlan plan = planFor(buy, 2);
@@ -191,7 +191,7 @@ class MatchConfirmServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void rollsBackEverythingWhenCounterpartyInDbDiffersFromPlan() {
+    void 상대_주문이_계획과_다르면_전부_롤백한다() {
         long sell = rest(SELLER, "s1", SELL, 1_000, 5, 1);
         long buy = place(BUYER, "b1", BUY, 1_000, 5);
         MatchPlan plan = planFor(buy, 2);

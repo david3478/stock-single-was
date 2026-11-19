@@ -63,7 +63,7 @@ class SymbolWorkerTest {
     // --- 성공 ---
 
     @Test
-    void unmatchedOrderRestsWithNextSeqAfterCommit() {
+    void 상대가_없으면_커밋_후_다음_처리순번으로_대기_등록된다() {
         received(1, 100, BUY, 1_000, 5);
 
         assertThat(worker.process(1)).isEqualTo(Outcome.APPLIED);
@@ -73,7 +73,7 @@ class SymbolWorkerTest {
     }
 
     @Test
-    void matchedOrderIsAppliedToBookAfterCommit() {
+    void 체결된_주문은_커밋_후_호가창에_반영된다() {
         book.add(new RestingOrder(1, 100, SELL, 1_000, 5, 3));
         received(2, 200, BUY, 1_000, 5);
 
@@ -87,7 +87,7 @@ class SymbolWorkerTest {
     }
 
     @Test
-    void retriesWholeCommitAfterDeadlock() {
+    void 데드락이_나면_T2_전체를_다시_시도한다() {
         received(1, 100, BUY, 1_000, 5);
         when(confirm.confirm(anyString(), any()))
                 .thenThrow(new CannotAcquireLockException("deadlock"))
@@ -102,7 +102,7 @@ class SymbolWorkerTest {
     // --- 건너뛰기: 중복 전달 ---
 
     @Test
-    void skipsOrderThatIsNoLongerReceived() {
+    void 이미_처리된_주문이_다시_오면_건너뛴다() {
         when(orders.findById(1L)).thenReturn(Optional.of(new Order(1L, 100, "AAA", "c1", BUY, 1_000,
                 5, 5, OrderStatus.OPEN, 3L, null)));
 
@@ -113,14 +113,14 @@ class SymbolWorkerTest {
     }
 
     @Test
-    void skipsUnknownOrder() {
+    void 없는_주문번호는_건너뛴다() {
         when(orders.findById(1L)).thenReturn(Optional.empty());
 
         assertThat(worker.process(1)).isEqualTo(Outcome.SKIPPED);
     }
 
     @Test
-    void skipsWithoutTouchingBookWhenCommitFindsOrderAlreadyProcessed() {
+    void 커밋_시점에_이미_처리된_주문이면_호가창을_건드리지_않는다() {
         received(1, 100, BUY, 1_000, 5);
         when(confirm.confirm(anyString(), any())).thenReturn(false);
 
@@ -133,7 +133,7 @@ class SymbolWorkerTest {
     // --- 실패: 호가창과 순번은 그대로 ---
 
     @Test
-    void leavesBookAndSeqUnchangedWhenCommitFails() {
+    void 커밋이_실패하면_호가창과_처리순번이_그대로다() {
         book.add(new RestingOrder(1, 100, SELL, 1_000, 5, 3));
         List<RestingOrder> before = book.orders(SELL);
         received(2, 200, BUY, 1_000, 5);
@@ -146,7 +146,7 @@ class SymbolWorkerTest {
     }
 
     @Test
-    void givesUpAfterMaxDeadlockRetriesWithBookUnchanged() {
+    void 데드락_재시도_횟수를_넘기면_포기하고_호가창은_그대로다() {
         received(1, 100, BUY, 1_000, 5);
         when(confirm.confirm(anyString(), any())).thenThrow(new CannotAcquireLockException("deadlock"));
 
@@ -159,7 +159,7 @@ class SymbolWorkerTest {
     // --- 대기열 넘침: DB의 RECEIVED에서 이어 처리 (ADR 0005 ①) ---
 
     @Test
-    void drainProcessesReceivedOrdersFromDbAndClearsOverflowWhenEmpty() {
+    void 넘침_중에는_DB의_미처리_주문을_처리하고_다_비면_넘침을_해제한다() {
         queue.markOverflow();
         received(1, 100, BUY, 1_000, 5);
         received(2, 101, BUY, 1_000, 5);
@@ -175,7 +175,7 @@ class SymbolWorkerTest {
     }
 
     @Test
-    void drainKeepsOverflowWhenOrderArrivesWhileClearing() {
+    void 넘침_해제_중에_DB에_새_주문이_보이면_넘침을_유지한다() {
         queue.markOverflow();
         received(3, 100, BUY, 1_000, 5);
         when(orders.findReceivedIds("AAA", PROPS.drainBatchSize()))

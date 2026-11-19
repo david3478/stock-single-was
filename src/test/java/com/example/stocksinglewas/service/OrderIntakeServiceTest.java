@@ -93,7 +93,7 @@ class OrderIntakeServiceTest extends MySqlIntegrationTest {
     // --- 성공 ---
 
     @Test
-    void buyReservesCashAndSavesReceivedOrder() {
+    void 매수는_현금을_예약하고_처리_전_주문을_저장한다() {
         long orderId = intake.receive(ACCOUNT, order("c1", BUY, 1_000, 30));
 
         assertThat(cash(ACCOUNT)).isEqualTo(CASH - 30_000);
@@ -107,7 +107,7 @@ class OrderIntakeServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void sellReservesQuantityWithoutTouchingCash() {
+    void 매도는_현금을_건드리지_않고_수량을_예약한다() {
         intake.receive(ACCOUNT, order("c1", SELL, 1_000, 4));
 
         assertThat(reservedQuantity(ACCOUNT)).isEqualTo(4);
@@ -116,14 +116,14 @@ class OrderIntakeServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void dispatchesOrderToSymbolQueueAfterCommit() {
+    void 커밋_후_종목_대기열로_전달한다() {
         long orderId = intake.receive(ACCOUNT, order("c1", BUY, 1_000, 1));
 
         verify(dispatcher).dispatch(orderId, "AAA");
     }
 
     @Test
-    void acceptsOrderEvenWhenQueueIsFull() {
+    void 대기열이_가득_차도_접수는_성공한다() {
         when(dispatcher.dispatch(anyLong(), anyString())).thenReturn(false);
 
         long orderId = intake.receive(ACCOUNT, order("c1", BUY, 1_000, 1));
@@ -135,7 +135,7 @@ class OrderIntakeServiceTest extends MySqlIntegrationTest {
     // --- 같은 요청번호로 다시 요청 ---
 
     @Test
-    void retryWithSameRequestReturnsExistingOrderWithoutReservingTwice() {
+    void 같은_요청을_다시_보내면_기존_주문을_돌려주고_두_번_예약하지_않는다() {
         long first = intake.receive(ACCOUNT, order("c1", BUY, 1_000, 30));
         long second = intake.receive(ACCOUNT, order("c1", BUY, 1_000, 30));
 
@@ -145,7 +145,7 @@ class OrderIntakeServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void sameRequestIdOnDifferentAccountsAreDifferentOrders() {
+    void 계좌가_다르면_같은_요청번호도_다른_주문이다() {
         jdbc.update("UPDATE accounts SET cash_balance = ? WHERE id = ?", CASH, OTHER_ACCOUNT);
 
         long a = intake.receive(ACCOUNT, order("c1", BUY, 1_000, 1));
@@ -155,7 +155,7 @@ class OrderIntakeServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void rejectsSameRequestIdWithDifferentContent() {
+    void 같은_요청번호로_내용이_다른_주문은_거절한다() {
         intake.receive(ACCOUNT, order("c1", BUY, 1_000, 30));
 
         assertRejected(() -> intake.receive(ACCOUNT, order("c1", BUY, 1_000, 31)), Reason.REQUEST_ID_CONFLICT);
@@ -165,7 +165,7 @@ class OrderIntakeServiceTest extends MySqlIntegrationTest {
     // --- 거절: 아무것도 저장하거나 예약하지 않는다 ---
 
     @Test
-    void rejectsBuyWhenCashIsInsufficient() {
+    void 현금이_부족하면_매수를_거절한다() {
         assertRejected(() -> intake.receive(ACCOUNT, order("c1", BUY, 1_000, 101)), Reason.INSUFFICIENT_CASH);
 
         assertThat(cash(ACCOUNT)).isEqualTo(CASH);
@@ -174,14 +174,14 @@ class OrderIntakeServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void acceptsBuyThatUsesExactlyAllCash() {
+    void 현금을_딱_맞게_다_쓰는_매수는_접수된다() {
         intake.receive(ACCOUNT, order("c1", BUY, 1_000, 100));
 
         assertThat(cash(ACCOUNT)).isZero();
     }
 
     @Test
-    void rejectsSellWhenQuantityIsInsufficient() {
+    void 매도_가능_수량이_부족하면_매도를_거절한다() {
         intake.receive(ACCOUNT, order("c1", SELL, 1_000, 7));
 
         assertRejected(() -> intake.receive(ACCOUNT, order("c2", SELL, 1_000, 4)), Reason.INSUFFICIENT_QUANTITY);
@@ -190,18 +190,18 @@ class OrderIntakeServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void rejectsSellOfSymbolNotHeld() {
+    void 보유하지_않은_종목은_매도할_수_없다() {
         assertRejected(() -> intake.receive(OTHER_ACCOUNT, order("c1", SELL, 1_000, 1)),
                 Reason.INSUFFICIENT_QUANTITY);
     }
 
     @Test
-    void rejectsUnknownAccount() {
+    void 없는_계좌는_거절한다() {
         assertRejected(() -> intake.receive(999, order("c1", BUY, 1_000, 1)), Reason.ACCOUNT_NOT_FOUND);
     }
 
     @Test
-    void rejectsSymbolThatIsNotActive() {
+    void 거래_가능하지_않은_종목은_거절한다() {
         assertRejected(() -> intake.receive(ACCOUNT, new PlaceOrderRequest("c1", "NEW", BUY, 1_000, 1)),
                 Reason.SYMBOL_NOT_TRADABLE);
         assertRejected(() -> intake.receive(ACCOUNT, new PlaceOrderRequest("c2", "NONE", BUY, 1_000, 1)),
@@ -210,7 +210,7 @@ class OrderIntakeServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void rejectsOrderAmountThatOverflows() {
+    void 주문_금액이_범위를_넘으면_거절한다() {
         assertRejected(() -> intake.receive(ACCOUNT, order("c1", BUY, Long.MAX_VALUE / 2, 3)),
                 Reason.AMOUNT_OUT_OF_RANGE);
         assertThat(reservedCash(ACCOUNT)).isZero();
@@ -219,7 +219,7 @@ class OrderIntakeServiceTest extends MySqlIntegrationTest {
     // --- 동시 접수 ---
 
     @Test
-    void onlyOneOfConcurrentSellsForAllHeldQuantitySucceeds() throws Exception {
+    void 보유량_전부를_동시에_매도하면_한_건만_성공한다() throws Exception {
         int threads = 8;
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService pool = Executors.newFixedThreadPool(threads);

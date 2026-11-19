@@ -88,7 +88,7 @@ class OrderFlowIntegrationTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void buyAndSellOverHttpAreMatchedBySymbolWorker() throws Exception {
+    void HTTP로_낸_매수와_매도가_종목_워커에서_체결된다() throws Exception {
         preparer.prepare("AAA");
 
         long sell = placeViaHttp(SELLER, "s1", "SELL", 1_000, 5);
@@ -104,7 +104,7 @@ class OrderFlowIntegrationTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void rejectedOrderReturnsErrorCode() throws Exception {
+    void 거절된_주문은_오류_코드를_응답한다() throws Exception {
         mvc.perform(post("/api/accounts/{id}/orders", BUYER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -115,7 +115,7 @@ class OrderFlowIntegrationTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void invalidRequestReturnsBadRequest() throws Exception {
+    void 잘못된_요청은_400을_응답한다() throws Exception {
         mvc.perform(post("/api/accounts/{id}/orders", BUYER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -127,7 +127,7 @@ class OrderFlowIntegrationTest extends MySqlIntegrationTest {
 
     /** 엔진이 없을 때 접수된 주문(RECEIVED)은 엔진을 준비하면 DB에서 읽어 처리된다. */
     @Test
-    void ordersReceivedBeforeEngineStartAreProcessedFromDb() throws Exception {
+    void 엔진_시작_전에_접수된_주문은_엔진이_뜨면_DB에서_읽어_처리한다() throws Exception {
         long buy = intake.receive(BUYER, new PlaceOrderRequest("b1", "AAA", Side.BUY, 1_000, 5));
 
         preparer.prepare("AAA");
@@ -137,7 +137,7 @@ class OrderFlowIntegrationTest extends MySqlIntegrationTest {
 
     /** 재시작해도 DB의 대기 주문을 호가창에 되살리고, 순번은 기존 최댓값 다음부터 쓴다. */
     @Test
-    void restingOrdersInDbAreMatchedAfterEngineStart() throws Exception {
+    void 재시작해도_DB의_대기_주문이_복원되고_처리순번이_이어진다() throws Exception {
         long sell = intake.receive(SELLER, new PlaceOrderRequest("s1", "AAA", Side.SELL, 1_000, 5));
         db.markOpen(sell, 5);
 

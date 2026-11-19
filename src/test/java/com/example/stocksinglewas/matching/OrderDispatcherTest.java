@@ -12,7 +12,7 @@ class OrderDispatcherTest {
     final OrderDispatcher dispatcher = new OrderDispatcher();
 
     @Test
-    void putsOrderIdIntoRegisteredSymbolQueue() throws InterruptedException {
+    void 등록된_종목_대기열에_주문번호를_넣는다() throws InterruptedException {
         SymbolQueue queue = new SymbolQueue(10);
         dispatcher.register("AAA", queue);
 
@@ -21,7 +21,7 @@ class OrderDispatcherTest {
     }
 
     @Test
-    void keepsQueuesSeparatePerSymbol() throws InterruptedException {
+    void 종목마다_대기열이_따로다() throws InterruptedException {
         SymbolQueue a = new SymbolQueue(10);
         SymbolQueue b = new SymbolQueue(10);
         dispatcher.register("AAA", a);
@@ -34,7 +34,7 @@ class OrderDispatcherTest {
     }
 
     @Test
-    void fullQueueTurnsOnOverflow() {
+    void 대기열이_가득_차면_넘침_상태가_된다() {
         SymbolQueue queue = new SymbolQueue(1);
         dispatcher.register("AAA", queue);
         dispatcher.dispatch(1L, "AAA");
@@ -45,7 +45,7 @@ class OrderDispatcherTest {
 
     /** 넘침 중에는 자리가 나도 새 주문을 큐에 넣지 않는다. DB의 RECEIVED를 ID 순으로 이어 처리해야 순서가 섞이지 않는다. */
     @Test
-    void keepsNewOrdersInDbWhileOverflowing() throws InterruptedException {
+    void 넘침_중에는_자리가_나도_새_주문을_대기열에_넣지_않는다() throws InterruptedException {
         SymbolQueue queue = new SymbolQueue(1);
         dispatcher.register("AAA", queue);
         dispatcher.dispatch(1L, "AAA");
@@ -57,12 +57,12 @@ class OrderDispatcherTest {
     }
 
     @Test
-    void returnsFalseWhenSymbolHasNoQueue() {
+    void 대기열이_없는_종목이면_전달에_실패한다() {
         assertThat(dispatcher.dispatch(1L, "AAA")).isFalse();
     }
 
     @Test
-    void returnsFalseAfterUnregister() {
+    void 대기열_등록을_해제하면_전달에_실패한다() {
         dispatcher.register("AAA", new SymbolQueue(10));
         dispatcher.unregister("AAA");
 
