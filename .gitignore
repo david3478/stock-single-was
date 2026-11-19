@@ -43,3 +43,4 @@ out/
 
 ### 배포 비밀값 ###
 deploy/.env
+!deploy/.env.example
