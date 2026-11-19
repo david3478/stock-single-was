@@ -32,11 +32,15 @@ PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포�
 - [ ] 커밋 결과 불명 처리(ADR 0005 ②)
 
 ## 4. 종목 워커와 T2
-- [ ] `SymbolEngine`(대기열 + 워커 + 호가창), 계획 → 커밋 → 메모리 반영
-- [ ] 즉시 체결, 상대 없음 → 대기 등록, 중복 전달 무시
-- [ ] T2 실패 시 호가창 불변, 데드락 재시도
-- [ ] `NotificationWriter`: 계좌 ID 오름차순 잠금 후 INSERT(ADR 0003)
-- [ ] 대기열 넘침 처리(ADR 0005 ①)
+- [x] `SymbolQueue` + `SymbolWorker` + `OrderBook`, `SymbolPreparer`가 종목별로 생성. 계획 → 커밋(`MatchConfirmService`) → 메모리 반영
+- [x] 즉시 체결, 상대 없음 → 대기 등록, 중복 전달 무시
+- [x] T2 실패 시 호가창 불변, 데드락 재시도
+- [x] `NotificationWriter`: T2 시작 시 계좌 ID 오름차순 잠금 후 INSERT(ADR 0003 ④). 검증 테스트 3종은 6단계
+- [x] 대기열 넘침 처리(ADR 0005 ①). 엔진은 넘침 상태로 시작해 DB의 RECEIVED부터 처리
+- [x] HTTP → 워커 → DB 통합 테스트 (SSE 제외)
+
+참고: 엔진 준비 때 DB의 대기 주문 복원과 MAX(seq)+1 순번 복원까지 들어갔다. 재시작해도 체결이 틀어지지 않는다.
+7단계에 남은 것은 대량 복원(묶음 조회), readiness, 종목 단위 자동 복구, 감시다.
 
 ## 5. 조회
 - [ ] 계좌·보유·주문 조회 API

@@ -30,3 +30,12 @@ management:
       percentiles-histogram:
         "[http.server.requests]": true
         "[hikaricp.connections.acquire]": true
+
+trading:
+  matching:
+    queue-capacity: ${MATCHING_QUEUE_CAPACITY:50000}
+    drain-batch-size: 500
+    poll-timeout: 100ms
+    deadlock-max-retries: 3
+    deadlock-retry-delay: 10ms
+    auto-start: true
