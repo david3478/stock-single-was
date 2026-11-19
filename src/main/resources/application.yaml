@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: stock-single-was
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      # 종목 워커 수 + HTTP 요청 여유분 이상 (ADR 0004)
+      maximum-pool-size: ${DB_POOL_SIZE:30}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:30000}
+  flyway:
+    locations: classpath:db/migration
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoint:
+    health:
+      probes:
+        # readiness에 주문 복구 완료를 포함한다 (7단계에서 연결)
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true
+        "[hikaricp.connections.acquire]": true

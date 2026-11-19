@@ -1,0 +1,24 @@
+# 로컬 개발 전용. 프로토타입(stock-prototype)과 DB 이름, 포트, 볼륨을 분리한다.
+name: stock-single-was
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: stock_single_was
+      MYSQL_USER: ${MYSQL_USER:-ssw}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ssw}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      TZ: UTC
+    ports:
+      - "3307:3306"
+    volumes:
+      - ssw-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  ssw-mysql-data:
