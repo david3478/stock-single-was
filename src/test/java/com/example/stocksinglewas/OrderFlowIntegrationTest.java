@@ -19,10 +19,10 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import com.example.stocksinglewas.dto.PlaceOrderRequest;
-import com.example.stocksinglewas.entity.Side;
-import com.example.stocksinglewas.matching.SymbolPreparer;
-import com.example.stocksinglewas.service.OrderIntakeService;
+import com.example.stocksinglewas.order.dto.PlaceOrderRequest;
+import com.example.stocksinglewas.order.entity.Side;
+import com.example.stocksinglewas.matching.engine.SymbolPreparer;
+import com.example.stocksinglewas.order.service.OrderIntakeService;
 import com.example.stocksinglewas.support.MySqlIntegrationTest;
 import com.example.stocksinglewas.support.TestData;
 
