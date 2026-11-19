@@ -7,6 +7,9 @@
 ## 작업 규칙
 
 - 기능마다 실패하는 테스트를 먼저 작성하고, 구현해 통과시킨 뒤 리팩터링한다.
+- 테스트는 서비스 메서드별로 성공·에러 케이스를 모두 쓴다. 결과를 SQL·트랜잭션·잠금이 정하는 경우(주문 접수 예약, 체결 확정 T2, 알림 기록)만 Testcontainers MySQL을 쓰고, 그 밖은 DB 없이 순수 테스트나 mock으로 쓴다. 스키마 제약만 따로 검사하는 테스트는 쓰지 않는다. HTTP→DB 통합 테스트는 Controller가 생긴 뒤 추가한다.
+- 테스트 메서드명은 한글 문장으로 쓴다(예: `현금이_부족하면_매수를_거절한다`).
+- 패키지는 도메인별(`order`, `account`, `symbol`, `matching`, `notification`)로 나누고 그 안을 `controller`/`service`/`dto`/`entity`/`dao`로 나눈다. 체결 메모리 엔진은 `matching/engine`, 예외·오류 응답·설정은 `global`에 둔다. 빈 폴더는 만들지 않는다.
 - 진행 단계와 체크리스트는 `docs/IMPLEMENTATION_PLAN.md`를 따른다. 한 번에 한 항목씩 진행한다.
 - 기본 브랜치는 `main`, 작업 브랜치는 `{type}/{short-slug}`(예: `feat/symbol-worker`), PR 대상은 `main`이다.
 - 커밋 메시지는 `.github/commit_template.txt`, PR 본문은 `.github/pull_request_template.md` 양식을 따른다.
