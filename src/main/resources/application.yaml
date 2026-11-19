@@ -39,3 +39,8 @@ trading:
     deadlock-max-retries: 3
     deadlock-retry-delay: 10ms
     auto-start: true
+  query:
+    default-page-size: 20
+    max-page-size: 100
+    default-order-book-depth: 10
+    max-order-book-depth: 50

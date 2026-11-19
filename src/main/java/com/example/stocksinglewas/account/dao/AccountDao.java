@@ -1,7 +1,13 @@
 package com.example.stocksinglewas.account.dao;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+
+import com.example.stocksinglewas.query.dto.BalanceResponse;
+import com.example.stocksinglewas.query.dto.HoldingResponse;
 
 /**
  * 계좌DAO. 예약은 조건부 UPDATE 한 문장으로 "잔고 확인 + 차감"을 원자적으로 한다.
@@ -23,6 +29,23 @@ public class AccountDao {
     public boolean lock(long accountId) {
         return !jdbc.queryForList("SELECT id FROM accounts WHERE id = ? FOR UPDATE", Long.class, accountId)
                 .isEmpty();
+    }
+
+    /** 잔고조회. 계좌가 없으면 빈 값. */
+    public Optional<BalanceResponse> findBalance(long accountId) {
+        return jdbc.query("SELECT cash_balance, reserved_cash FROM accounts WHERE id = ?",
+                (rs, n) -> new BalanceResponse(rs.getLong("cash_balance"), rs.getLong("reserved_cash")),
+                accountId).stream().findFirst();
+    }
+
+    /** 보유종목조회. 총보유량이 0인 종목은 뺀다. */
+    public List<HoldingResponse> findHoldings(long accountId) {
+        return jdbc.query("""
+                SELECT symbol_code, quantity, reserved_quantity FROM holdings
+                WHERE account_id = ? AND quantity > 0 ORDER BY symbol_code""",
+                (rs, n) -> new HoldingResponse(rs.getString("symbol_code"), rs.getInt("quantity"),
+                        rs.getInt("reserved_quantity"), rs.getInt("quantity") - rs.getInt("reserved_quantity")),
+                accountId);
     }
 
     /** 가능금액예약: 사용 가능 현금에서 예약 현금으로 옮긴다. */

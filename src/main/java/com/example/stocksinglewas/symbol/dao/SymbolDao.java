@@ -29,6 +29,11 @@ public class SymbolDao {
                 .stream().findFirst();
     }
 
+    /** 전체 종목. */
+    public List<Symbol> findAll() {
+        return jdbc.query("SELECT code, name, status FROM symbols ORDER BY code", SYMBOL);
+    }
+
     /** 활성종목조회. */
     public List<Symbol> findActive() {
         return jdbc.query("SELECT code, name, status FROM symbols WHERE status = 'ACTIVE' ORDER BY code", SYMBOL);

@@ -13,6 +13,8 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+import com.example.stocksinglewas.query.dto.OrderHistoryResponse;
+import com.example.stocksinglewas.query.dto.PriceLevel;
 import com.example.stocksinglewas.order.entity.Order;
 import com.example.stocksinglewas.order.entity.OrderStatus;
 import com.example.stocksinglewas.order.entity.Side;
@@ -78,6 +80,30 @@ public class OrderDao {
                 UPDATE orders SET remaining = ?, status = ?
                 WHERE id = ? AND remaining = ? AND status IN ('OPEN', 'PARTIALLY_FILLED')""",
                 newRemaining, status.name(), orderId, expectedRemaining) == 1;
+    }
+
+    /**
+     * 주문내역묶음조회: 최신순. beforeId가 있으면 그 주문번호보다 작은 것부터 이어서 읽는다.
+     */
+    public List<OrderHistoryResponse> findHistory(long accountId, Long beforeId, int limit) {
+        return jdbc.query("""
+                SELECT id, symbol_code, side, limit_price, qty, remaining, status, created_at FROM orders
+                WHERE account_id = ? AND id < ? ORDER BY id DESC LIMIT ?""",
+                (rs, n) -> new OrderHistoryResponse(rs.getLong("id"), rs.getString("symbol_code"),
+                        rs.getString("side"), rs.getLong("limit_price"), rs.getInt("qty"), rs.getInt("remaining"),
+                        rs.getString("status"), rs.getTimestamp("created_at").toInstant()),
+                accountId, beforeId == null ? Long.MAX_VALUE : beforeId, limit);
+    }
+
+    /** 호가 단계: 대기 중인 주문의 잔량을 가격별로 합친다. 매수는 높은 가격부터, 매도는 낮은 가격부터. */
+    public List<PriceLevel> findPriceLevels(String symbolCode, Side side, int depth) {
+        String order = side == Side.BUY ? "DESC" : "ASC";
+        return jdbc.query("""
+                SELECT limit_price, SUM(remaining) AS quantity, COUNT(*) AS orders FROM orders
+                WHERE symbol_code = ? AND side = ? AND status IN ('OPEN', 'PARTIALLY_FILLED')
+                GROUP BY limit_price ORDER BY limit_price %s LIMIT ?""".formatted(order),
+                (rs, n) -> new PriceLevel(rs.getLong("limit_price"), rs.getLong("quantity"), rs.getInt("orders")),
+                symbolCode, side.name(), depth);
     }
 
     /** 저장: RECEIVED 주문을 INSERT하고 발급된 주문번호를 돌려준다. */

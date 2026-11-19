@@ -1,0 +1,41 @@
+# EC2 한 대에서 앱과 MySQL을 함께 실행한다(ADR 0010). 로컬 개발용 docker-compose.yml과 별개다.
+# 같은 폴더에 .env를 두고 실행한다: docker compose up -d
+# .env 예시는 .env.example. 실제 .env는 git에 올리지 않는다.
+name: stock-single-was-deploy
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: stock_single_was
+      MYSQL_USER: ${DB_USER:?DB_USER is required}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      TZ: UTC
+    command: ["--innodb-buffer-pool-size=256M"]
+    # 포트를 외부에 열지 않는다. 앱 컨테이너만 내부 네트워크로 접속한다.
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  app:
+    image: ${APP_IMAGE:?APP_IMAGE is required}
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/stock_single_was?rewriteBatchedStatements=true&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JAVA_TOOL_OPTIONS: "-Xmx512m -Duser.timezone=UTC"
+    ports:
+      - "${APP_PORT:-80}:8080"
+
+volumes:
+  mysql-data:

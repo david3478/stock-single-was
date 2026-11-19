@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>모의 주식 매매</title>
+  <link rel="stylesheet" href="trading.css">
+  <script type="module" src="main.js"></script>
+</head>
+<body>
+  <header>
+    <h1>모의 주식 매매</h1>
+    <label>계좌 <input id="account" type="number" min="1"></label>
+    <label>종목 <select id="symbol"></select></label>
+    <span id="connection" class="connection"></span>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>주문</h2>
+      <form id="order-form">
+        <label>지정가(원) <input id="price" type="number" min="1" step="1" value="1000" required></label>
+        <label>수량(주) <input id="quantity" type="number" min="1" step="1" value="1" required></label>
+        <div class="buttons">
+          <button type="submit" value="BUY" class="buy">매수</button>
+          <button type="submit" value="SELL" class="sell">매도</button>
+        </div>
+      </form>
+      <p id="message" class="message"></p>
+      <p class="hint">접수 후 종목 워커가 체결을 처리합니다. 상태가 <b>접수됨 → 대기 / 체결 완료</b>로 바뀌는지 보세요.
+        호가를 누르면 그 가격이 입력됩니다.</p>
+    </section>
+
+    <section class="panel">
+      <h2>호가창</h2>
+      <table class="orderbook">
+        <thead><tr><th>매도 잔량</th><th>가격</th><th>매수 잔량</th></tr></thead>
+        <tbody id="orderbook"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>잔고</h2>
+      <table><tbody id="balance"></tbody></table>
+      <h2>보유 종목</h2>
+      <table>
+        <thead><tr><th>종목</th><th>보유</th><th>매도 주문 중</th><th>매도 가능</th></tr></thead>
+        <tbody id="holdings"></tbody>
+      </table>
+    </section>
+
+    <section class="panel wide">
+      <h2>내 주문</h2>
+      <table>
+        <thead><tr><th>주문번호</th><th>종목</th><th>구분</th><th>지정가</th><th>체결 / 주문</th><th>상태</th></tr></thead>
+        <tbody id="orders"></tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
