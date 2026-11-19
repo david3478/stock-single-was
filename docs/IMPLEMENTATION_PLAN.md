@@ -21,9 +21,9 @@ PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포�
 - [x] 시험 계좌·종목 seed(명시적 실행만, 배포 시 자동 실행 금지)
 
 ## 2. 순수 도메인 (DB 없음)
-- [ ] `OrderBook`: 가격-시간(seq) 우선, 부분 체결, 잔량 갱신
-- [ ] `Matcher`: 호가창을 바꾸지 않고 `MatchPlan` 생성
-- [ ] `SettlementCalculator`: 예약, 차액 환불, 이중 차감 없음, 오버플로 검사
+- [x] `OrderBook`: 가격-시간(seq) 우선, 부분 체결, 잔량 갱신
+- [x] `OrderBook.plan`: 호가창을 바꾸지 않고 `MatchPlan` 생성, 커밋 후 `apply` (별도 Matcher 클래스 대신 EA의 대기주문목록.체결계획생성/계획반영에 맞춤)
+- [x] `SettlementCalculator`: 예약, 차액 환불, 이중 차감 없음, 오버플로 검사
 
 ## 3. 주문 접수 T1
 - [ ] `POST /orders`: 조건부 UPDATE 예약 + `RECEIVED` 저장 + 커밋 후 대기열 전달
