@@ -1,5 +1,7 @@
 package com.example.stocksinglewas.matching;
 
+import com.example.stocksinglewas.entity.Side;
+
 import java.util.Objects;
 
 /** 워커가 처음 처리하는 RECEIVED 주문. 아직 처리순번이 없다. */

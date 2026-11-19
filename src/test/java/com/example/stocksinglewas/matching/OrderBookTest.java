@@ -1,12 +1,14 @@
 package com.example.stocksinglewas.matching;
 
-import static com.example.stocksinglewas.matching.Side.BUY;
-import static com.example.stocksinglewas.matching.Side.SELL;
+import static com.example.stocksinglewas.entity.Side.BUY;
+import static com.example.stocksinglewas.entity.Side.SELL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import java.util.List;
+
+import com.example.stocksinglewas.entity.Side;
 
 import org.junit.jupiter.api.Test;
 

@@ -1,6 +1,6 @@
-package com.example.stocksinglewas.matching;
+package com.example.stocksinglewas.entity;
 
-/** 매매구분. */
+/** 매매구분(EA: 매매구분). */
 public enum Side {
     BUY,
     SELL;
