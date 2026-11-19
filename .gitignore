@@ -40,3 +40,6 @@ out/
 .env
 .env.*
 .claude/evidence/
+
+### 배포 비밀값 ###
+deploy/.env
