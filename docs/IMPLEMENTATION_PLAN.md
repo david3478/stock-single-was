@@ -26,9 +26,9 @@ PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포�
 - [x] `SettlementCalculator`: 예약, 차액 환불, 이중 차감 없음, 오버플로 검사
 
 ## 3. 주문 접수 T1
-- [ ] `POST /orders`: 조건부 UPDATE 예약 + `RECEIVED` 저장 + 커밋 후 대기열 전달
-- [ ] 잔고·수량 부족 거절, 같은 계좌 동시 매도 1건만 성공
-- [ ] clientOrderId 재요청 시 기존 주문 반환
+- [x] `POST /api/accounts/{accountId}/orders`: 조건부 UPDATE 예약 + `RECEIVED` 저장 + 커밋 후 대기열 전달
+- [x] 잔고·수량 부족 거절, 같은 계좌 동시 매도 1건만 성공
+- [x] clientOrderId 재요청 시 기존 주문 반환
 - [ ] 커밋 결과 불명 처리(ADR 0005 ②)
 
 ## 4. 종목 워커와 T2
