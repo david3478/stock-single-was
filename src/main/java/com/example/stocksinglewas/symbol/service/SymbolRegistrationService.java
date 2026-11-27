@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import com.example.stocksinglewas.global.exception.SymbolConflictException;
@@ -24,6 +25,7 @@ import com.example.stocksinglewas.symbol.entity.SymbolStatus;
 public class SymbolRegistrationService {
 
     private static final Logger log = LoggerFactory.getLogger(SymbolRegistrationService.class);
+    private static final int MAX_INSERT_ATTEMPTS = 3;
 
     /** 이 요청이 활성화했으면 ACTIVATED(201), 이미 활성이었으면 ALREADY_ACTIVE(200). */
     public enum Outcome { ACTIVATED, ALREADY_ACTIVE }
@@ -39,7 +41,7 @@ public class SymbolRegistrationService {
     /** 종목추가. */
     public Outcome addSymbol(String code, String name) {
         Optional<Symbol> existing = symbols.find(code);
-        if (existing.isEmpty() && !symbols.insertPreparing(code, name)) {
+        if (existing.isEmpty() && !insertPreparing(code, name)) {
             // 동시에 들어온 다른 요청이 먼저 등록했다. 그 등록을 이어서 처리한다
             existing = symbols.find(code);
         }
@@ -60,5 +62,22 @@ public class SymbolRegistrationService {
         }
         log.info("symbol {} ({}) added and activated", code, name);
         return Outcome.ACTIVATED;
+    }
+
+    /**
+     * 준비중등록. 같은 키를 여러 요청이 동시에 INSERT하면 InnoDB가 중복 키 대신 일부를 데드락으로 끝낼 수 있다
+     * (통합 테스트에서 관찰). 데드락으로 끝난 쪽은 롤백되었으므로 다시 시도하면 먼저 커밋된 등록을 "이미 있음"으로 본다.
+     */
+    private boolean insertPreparing(String code, String name) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return symbols.insertPreparing(code, name);
+            } catch (PessimisticLockingFailureException e) {
+                if (attempt >= MAX_INSERT_ATTEMPTS) {
+                    throw e;
+                }
+                log.info("deadlock while registering symbol {}, retrying ({}/{})", code, attempt, MAX_INSERT_ATTEMPTS);
+            }
+        }
     }
 }
