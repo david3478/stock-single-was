@@ -12,7 +12,7 @@ services:
       DB_URL: jdbc:mysql://${DB_HOST:?DB_HOST is required}:3306/stock_single_was?rewriteBatchedStatements=true&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
       DB_USER: ${DB_USER:?DB_USER is required}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
-      JAVA_TOOL_OPTIONS: "-Xmx768m -Duser.timezone=UTC"
+      JAVA_TOOL_OPTIONS: "-Xmx4g -Duser.timezone=UTC"  # m7i.large(8 GiB) 기준(ADR 0012)
     # 외부 포트를 열지 않는다. Nginx만 내부 네트워크로 접속한다.
     healthcheck:
       # 이미지에 curl이 없어 bash의 /dev/tcp로 readiness를 확인한다
