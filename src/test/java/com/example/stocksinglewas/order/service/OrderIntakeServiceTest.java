@@ -146,6 +146,29 @@ class OrderIntakeServiceTest extends MySqlIntegrationTest {
     }
 
     @Test
+    void 응답을_못_받아_다시_보낸_요청은_아직_처리_전이면_대기열로_다시_전달한다() {
+        // 커밋 결과 불명(ADR 0005 ②, 0013): 커밋은 됐지만 전달 전에 연결이 끊겨 클라이언트가 같은 요청을 다시 보낸다
+        when(dispatcher.dispatch(anyLong(), anyString())).thenReturn(false);
+        long first = intake.receive(ACCOUNT, order("c1", BUY, 1_000, 30));
+        when(dispatcher.dispatch(anyLong(), anyString())).thenReturn(true);
+
+        long retried = intake.receive(ACCOUNT, order("c1", BUY, 1_000, 30));
+
+        assertThat(retried).isEqualTo(first);
+        verify(dispatcher, times(2)).dispatch(first, "AAA");
+    }
+
+    @Test
+    void 다시_보낸_요청의_주문이_이미_처리됐으면_다시_전달하지_않는다() {
+        long first = intake.receive(ACCOUNT, order("c1", BUY, 1_000, 30));
+        jdbc.update("UPDATE orders SET status = 'OPEN', seq = 1 WHERE id = ?", first);
+
+        intake.receive(ACCOUNT, order("c1", BUY, 1_000, 30));
+
+        verify(dispatcher, times(1)).dispatch(first, "AAA");
+    }
+
+    @Test
     void 계좌가_다르면_같은_요청번호도_다른_주문이다() {
         jdbc.update("UPDATE accounts SET cash_balance = ? WHERE id = ?", CASH, OTHER_ACCOUNT);
 
