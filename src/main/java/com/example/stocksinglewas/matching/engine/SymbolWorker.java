@@ -44,7 +44,9 @@ public final class SymbolWorker {
     private final NotificationPushService push;
     private final MatchingProperties props;
 
-    private long nextSeq;
+    // 워커 스레드만 쓰고, 감시·메트릭이 다른 스레드에서 읽는다
+    private volatile long nextSeq;
+    private volatile boolean busy;
     private volatile boolean running;
     private volatile State state = State.CREATED;
     private Thread thread;
@@ -64,6 +66,15 @@ public final class SymbolWorker {
 
     /** 주문 하나를 처리한다. 예외가 나면 호가창과 순번은 바뀌지 않는다. */
     public Outcome process(long orderId) {
+        busy = true;
+        try {
+            return doProcess(orderId);
+        } finally {
+            busy = false;
+        }
+    }
+
+    private Outcome doProcess(long orderId) {
         Optional<Order> found = orders.findById(orderId);
         if (found.isEmpty() || found.get().status() != OrderStatus.RECEIVED) {
             return Outcome.SKIPPED;
@@ -118,6 +129,11 @@ public final class SymbolWorker {
 
     public State state() {
         return state;
+    }
+
+    /** 주문 하나를 처리하는 중인지. 감시가 "엔진이 쉬는데 미처리 주문이 있다"를 판정할 때 쓴다. */
+    public boolean busy() {
+        return busy;
     }
 
     public void start() {

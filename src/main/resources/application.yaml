@@ -19,8 +19,11 @@ management:
   endpoint:
     health:
       probes:
-        # readiness에 주문 복구 완료를 포함한다 (7단계에서 연결)
+        # readiness에 주문 복구 완료를 포함한다(ADR 0013)
         enabled: true
+      group:
+        readiness:
+          include: readinessState,engines
   endpoints:
     web:
       exposure:
@@ -39,6 +42,11 @@ trading:
     deadlock-max-retries: 3
     deadlock-retry-delay: 10ms
     auto-start: true
+  recovery:
+    # 기동 복구 때 대기 주문을 한 번에 읽는 건수(EA 복구설정.주문조회건수)
+    restore-batch-size: 1000
+    # 체결감시 주기. 상태 불일치는 두 주기 연속 관찰될 때 경고한다(ADR 0005, 0013)
+    monitor-interval: 5s
   query:
     default-page-size: 20
     max-page-size: 100

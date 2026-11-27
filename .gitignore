@@ -44,3 +44,7 @@ out/
 ### 배포 비밀값 ###
 deploy/.env
 !deploy/.env.example
+
+# 측정 실행 결과(접수 확정 목록, k6 출력, CPU 기록)
+loadtest/**/*.log
+loadtest/**/*.out
