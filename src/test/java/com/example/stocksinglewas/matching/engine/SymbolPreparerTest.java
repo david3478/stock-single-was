@@ -97,6 +97,32 @@ class SymbolPreparerTest {
         assertThat(preparer.status("AAA")).hasValueSatisfying(s -> assertThat(s.restoredOrders()).isEqualTo(2));
     }
 
+    // --- 실행 중 종목 추가(ADR 0014) ---
+
+    @Test
+    void 엔진이_없을_때만_준비하고_이미_있으면_다시_만들지_않는다() {
+        when(orders.findRestingAfter(anyString(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong(), anyInt())).thenReturn(List.of());
+
+        preparer.prepareIfAbsent("NEW1");
+        preparer.prepareIfAbsent("NEW1");
+
+        org.mockito.Mockito.verify(orders, org.mockito.Mockito.times(1)).maxSeq("NEW1");
+        assertThat(preparer.symbols()).containsExactly("NEW1");
+    }
+
+    @Test
+    void 기동할_때_준비중으로_남은_종목은_엔진을_만들지_않는다() {
+        when(symbols.findActive()).thenReturn(List.of(new Symbol("AAA", "A", SymbolStatus.ACTIVE)));
+        when(symbols.findAll()).thenReturn(List.of(
+                new Symbol("AAA", "A", SymbolStatus.ACTIVE), new Symbol("NEW1", "N", SymbolStatus.PREPARING)));
+        when(orders.findRestingAfter(anyString(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong(), anyInt())).thenReturn(List.of());
+
+        preparer.prepareActiveSymbols();
+
+        assertThat(preparer.symbols()).containsExactly("AAA");
+        assertThat(preparer.status("NEW1")).isEmpty();
+    }
+
     // --- readiness ---
 
     @Test
