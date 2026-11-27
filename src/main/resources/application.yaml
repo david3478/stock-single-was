@@ -44,3 +44,12 @@ trading:
     max-page-size: 100
     default-order-book-depth: 10
     max-order-book-depth: 50
+  notification:
+    # 송신 스레드와 대기열. 연결마다 대기 작업은 최대 1개라 대기열은 동시 연결 수 이상이면 거절이 없다
+    sender-threads: ${SSE_SENDER_THREADS:4}
+    sender-queue-capacity: ${SSE_SENDER_QUEUE_CAPACITY:10000}
+    # 프록시(Nginx 기본 60초)가 조용한 연결을 끊기 전에 보낸다
+    heartbeat-interval: 15s
+    emitter-timeout: 30m
+    reconnect-time: 3s
+    replay-batch-size: 100

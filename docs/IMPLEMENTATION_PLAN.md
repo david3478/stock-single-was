@@ -2,7 +2,9 @@
 
 `IMPLEMENTATION_GUIDE.md` §11을 단계별로 나눈 체크리스트다. 각 항목은 실패하는 테스트를 먼저 쓴다.
 
-진행 순서: 1 → 2 → 3 → 4 → 5 → 첫 배포(8단계의 최소 버전: Dockerfile, EC2 수동 배포) → 6 → 7 → 8 나머지 → 9 → 10.
+진행 순서: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8(첫 배포 포함) → 9 → 10.
+배포 구성(Dockerfile, `deploy/compose.yml`, `docs/DEPLOY.md`)은 5단계와 함께 준비했지만, 시연 시점이 멀어 실제 EC2 배포는 보류하고 6단계를 먼저 한다(2026-11-23).
+6단계 PR 다음 PR에서 프론트(`frontend/`, Nginx가 같은 주소로 제공)와 DB(RDS)를 분리한다. ADR 0010을 대체하는 ADR 0011로 남긴다(2026-11-25).
 
 PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포는 PR 하나(`feat/query-first-deploy`). 그 뒤는 단계별로 정한다.
 커밋은 기능(`feat:`)과 테스트(`test:`)를 나눈다. 모든 커밋에서 빌드와 테스트가 통과해야 하므로 기능 커밋 다음에 그 테스트 커밋을 둔다.
@@ -46,8 +48,9 @@ PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포�
 - [x] 계좌 잔고·보유·주문 내역(최신순, 이어서 조회) API, 데모용 종목 목록·호가창(DB 대기 주문 집계) API
 
 ## 6. SSE 알림
-- [ ] `SseHub`: 계좌별 연결, Last-Event-ID 재전송, 연결별 송신 직렬화, 별도 송신 실행 자원
-- [ ] ADR 0003 검증 테스트 3종(결정적 재현, 스트레스, SSE 끝단)
+- [x] SSE 전송(`NotificationPushService`, `SseEmitterRegistry`): 계좌별 연결, Last-Event-ID 재전송, 연결별 송신 직렬화, 별도 송신 실행 자원, 연결유지
+- [x] ADR 0003 검증 테스트 3종(결정적 재현, 스트레스, SSE 끝단)
+- [x] 데모 화면을 SSE로 전환(EventSource, 알림 수신 시 잔고·주문 갱신)
 
 ## 7. 복구와 감시
 - [ ] `RecoveryManager`: 잔여 주문 (price, seq) 복원, RECEIVED ID 순 복원, nextSeq 복원, 완료 전 readiness DOWN
