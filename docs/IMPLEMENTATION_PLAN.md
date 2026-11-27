@@ -60,11 +60,18 @@ PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포�
 - [x] QAS 4 측정(EC2 강제 종료): 유실 0, 복구 시간 17.73초(2026-11-27). 절차와 결과 `docs/measurement/qas4-server-recovery.md`
 
 ## 8. 실행 경로와 배포
-- [ ] HTTP → 워커 → DB → SSE 전 구간 테스트 (첫 실행 가능 버전 완료 기준)
-- [ ] Dockerfile, ECR + SSM 배포, readiness·smoke 확인
+- [x] HTTP → 워커 → DB → SSE 전 구간 테스트: `NotificationStreamIntegrationTest`(6단계)가 이 경로를 재연결까지 검증한다
+- [x] Dockerfile, ECR + SSM 배포(수동, `docs/DEPLOY.md`로 AWS에서 확인), readiness(7단계), smoke(DEPLOY.md 9단계 확인)
+- [ ] 배포 자동화(GitHub Actions + OIDC + SSM): 보류. QAS와 무관하고, EC2·RDS를 측정할 때만 켜는 환경이라 병합마다 배포하는 CD가 맞지 않는다.
+  서버를 상시 운영하거나 측정 반복으로 수동 배포가 병목이 되면 다시 본다(2026-11-27)
 
 ## 9. 실행 중 종목 추가 (QAS 6)
-- [ ] PREPARING → 엔진 준비 → ACTIVE, 실패와 재시도
+- [x] QAS 6 정의 수정(가이드 §10, 변경 기록 포함)과 설계(ADR 0014)
+- [ ] 종목DAO: 준비중등록(INSERT PREPARING), 활성화(조건부 UPDATE)
+- [ ] 종목등록Service: 준비중 등록 → 엔진 준비 → 활성화, 같은 요청 재시도로 완료, 이미 ACTIVE면 200, 이름 충돌 409
+- [ ] `POST /api/symbols` 컨트롤러와 HTTP → DB 통합 테스트(추가 전 거절, 추가 후 체결, 재시도, 동시 요청, 기존 종목 무중단)
+- [ ] 기동 시 PREPARING 종목 경고 로그
+- [ ] QAS 6 측정 스크립트·절차(10단계, 기존 종목 부하 + 종목 10개 순차 등록 + 시험 보유 수량 + 체결 검증). 커넥션 풀 크기를 종목 20개 기준으로 확정
 
 ## 10. 측정
 - [ ] 부하 도구(SSE 결과 수신까지 측정), 단일 WAS 기준선, 병목 ADR
