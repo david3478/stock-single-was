@@ -4,3 +4,8 @@ spring:
     url: ${DB_URL:jdbc:mysql://localhost:3307/stock_single_was?rewriteBatchedStatements=true&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true}
     username: ${DB_USER:ssw}
     password: ${DB_PASSWORD:ssw}
+  # 화면은 운영에서 Nginx가 제공한다(ADR 0011). 로컬에서만 Spring이 frontend/public을 제공해
+  # bootRun 하나로 화면까지 띄운다. 경로는 프로젝트 폴더에서 실행한다고 가정한다.
+  web:
+    resources:
+      static-locations: file:frontend/public/

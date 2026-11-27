@@ -1,41 +1,30 @@
-# EC2 한 대에서 앱과 MySQL을 함께 실행한다(ADR 0010). 로컬 개발용 docker-compose.yml과 별개다.
+# EC2에서 Nginx(프론트)와 앱을 실행한다. DB는 RDS다(ADR 0011). 로컬 개발용 docker-compose.yml과 별개다.
 # 같은 폴더에 .env를 두고 실행한다: docker compose up -d
 # .env 예시는 .env.example. 실제 .env는 git에 올리지 않는다.
+# 로컬에서 RDS 대신 MySQL 컨테이너로 확인할 때: docker compose -f compose.yml -f compose.local-db.yml up -d
 name: stock-single-was-deploy
 
 services:
-  mysql:
-    image: mysql:8.4
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: stock_single_was
-      MYSQL_USER: ${DB_USER:?DB_USER is required}
-      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
-      TZ: UTC
-    command: ["--innodb-buffer-pool-size=256M"]
-    # 포트를 외부에 열지 않는다. 앱 컨테이너만 내부 네트워크로 접속한다.
-    volumes:
-      - mysql-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-
   app:
     image: ${APP_IMAGE:?APP_IMAGE is required}
     restart: unless-stopped
-    depends_on:
-      mysql:
-        condition: service_healthy
     environment:
-      DB_URL: jdbc:mysql://mysql:3306/stock_single_was?rewriteBatchedStatements=true&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      JAVA_TOOL_OPTIONS: "-Xmx512m -Duser.timezone=UTC"
-    ports:
-      - "${APP_PORT:-80}:8080"
+      DB_URL: jdbc:mysql://${DB_HOST:?DB_HOST is required}:3306/stock_single_was?rewriteBatchedStatements=true&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
+      DB_USER: ${DB_USER:?DB_USER is required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      JAVA_TOOL_OPTIONS: "-Xmx4g -Duser.timezone=UTC"  # m7i.large(8 GiB) 기준(ADR 0012)
+    # 외부 포트를 열지 않는다. Nginx만 내부 네트워크로 접속한다.
+    healthcheck:
+      # 이미지에 curl이 없어 bash의 /dev/tcp로 readiness를 확인한다
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health/readiness HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
 
-volumes:
-  mysql-data:
+  front:
+    image: ${FRONT_IMAGE:?FRONT_IMAGE is required}
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "${HTTP_PORT:-80}:80"
