@@ -20,6 +20,7 @@ import com.example.stocksinglewas.order.dao.OrderDao;
 import com.example.stocksinglewas.order.entity.Order;
 import com.example.stocksinglewas.order.entity.OrderStatus;
 import com.example.stocksinglewas.symbol.dao.SymbolDao;
+import com.example.stocksinglewas.symbol.entity.SymbolStatus;
 
 import jakarta.annotation.PreDestroy;
 
@@ -29,7 +30,7 @@ import jakarta.annotation.PreDestroy;
  * <p>준비 순서: DB의 대기 주문으로 호가창 복원 → 다음 처리순번 = MAX(seq) + 1 →
  * 대기열을 넘침 상태로 만들어 전달기에 등록 → 워커 시작.
  * 넘침 상태로 시작하므로 워커는 DB에 남아 있던 RECEIVED 주문부터 ID 순으로 처리한다.
- * 기동, 종목 추가가 이 경로를 쓴다(ADR 0008). 종목 단위 자동 복구는 향후 과제다(ADR 0013).
+ * 기동과 종목 추가(ADR 0014)가 이 경로를 쓴다(ADR 0008). 종목 단위 자동 복구는 향후 과제다(ADR 0013).
  *
  * <p>기동 복구: 서버가 뜰 때 ACTIVE 종목을 모두 준비한 뒤에야 readiness를 연다.
  * 그동안에도 접수는 받는다. 접수된 주문은 DB에 RECEIVED로 남고 엔진이 뜬 뒤 처리된다.
@@ -73,8 +74,23 @@ public class SymbolPreparer {
             symbols.findActive().forEach(s -> prepare(s.code()));
             log.info("startup recovery done: {} symbols in {} ms",
                     engines.size(), (System.nanoTime() - started) / 1_000_000);
+            // 등록 도중 멈춘 종목은 자동으로 열지 않는다. 운영자가 같은 등록 요청을 다시 보내 완료한다(ADR 0014)
+            symbols.findAll().stream()
+                    .filter(s -> s.status() == SymbolStatus.PREPARING)
+                    .forEach(s -> log.warn("symbol {} is still PREPARING; send the same registration request again "
+                            + "to finish adding it", s.code()));
         }
         startupRecovered = true;
+    }
+
+    /**
+     * 엔진이 없을 때만 준비한다(종목 추가, ADR 0014). 확인과 생성을 같은 잠금 안에서 해서,
+     * 같은 종목의 추가 요청이 겹쳐도 이미 주문을 받고 있을 수 있는 엔진을 다시 만들지 않는다.
+     */
+    public synchronized void prepareIfAbsent(String symbolCode) {
+        if (!engines.containsKey(symbolCode)) {
+            prepare(symbolCode);
+        }
     }
 
     /** 새종목준비. 이미 엔진이 있으면 멈춘 뒤 DB에서 다시 만든다. 같은 종목 워커는 하나뿐이다. */

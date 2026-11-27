@@ -1,13 +1,14 @@
 # EA 설계 다이어그램과 구현 대조
 
 `images/`의 그림은 구현을 시작하기 전에 Enterprise Architect로 그린 **초기 설계**다. 구현하면서 바꾼 부분이 있고, 바꾼 이유는 ADR에 있다.
-아래 표는 그림마다 실제 코드와 다른 점을 적는다(2026-11-27, 7단계 기준). 그림을 고쳐 다시 내보내면 해당 줄을 지운다.
+아래 표는 그림마다 실제 코드와 다른 점을 적는다(2026-11-27, 9단계 기준). 그림을 고쳐 다시 내보내면 해당 줄을 지운다.
 
 ## 구현과 같은 그림
 
 | 그림 | 내용 | 실제 코드 | 비고 |
 |---|---|---|---|
 | [web-files](images/web-files.png) | 화면 파일 구조 | `frontend/public/` | 같다 |
+| [symbol-add](images/symbol-add.png) | 실행 중 종목 추가 | `symbol` 패키지(`SymbolController`, `SymbolRegistrationService`, `SymbolDao.insertPreparing`·`activate`) | 그림대로 준비중등록 → 새종목준비 → 활성화. 엔진은 없을 때만 만든다(`prepareIfAbsent`). 요청에 종목 이름을 함께 받는다(ADR 0014) |
 | [front-gateway](images/front-gateway.png) | Nginx 역방향 프록시 | `frontend/nginx.conf`, `frontend/Dockerfile` | 그림 메모의 "도입할 때의 구성"을 ADR 0011에서 도입했다 |
 | [notification](images/notification.png) | 알림 관리 | `notification` 패키지 | 이름만 영어로 바꿨다: 알림전송Service → `NotificationPushService`(전송예약 → `signal`), SSE연결관리 → `SseEmitterRegistry`, 알림기록기 → `NotificationWriter`. 묶음 없는 "번호이후조회"는 쓰지 않아 만들지 않았다 |
 | [query](images/query.png) | 조회 관리 | `query` 패키지 | 데모 화면용 종목 목록·호가창 조회를 더했다. 묶음 없는 "주문내역조회"는 만들지 않았다 |
@@ -24,9 +25,3 @@
 | [account](images/account.png) | 금액 `BigDecimal`, 정산은 체결결과 하나를 받는다 | 금액은 `long`. 정산은 `settle(종목, 체결)`이고 체결확정Service가 T2 안에서 부른다. 계좌 잠금은 T2 시작 때 계좌번호 오름차순으로 먼저 건다 | ADR 0006, 0009 |
 | [data-accessor](images/data-accessor.png) | DAO 4종과 메서드 | 위 주문DAO 차이. 잔여주문묶음조회는 상태 하나씩 읽는다(`findRestingAfter(종목, 상태, 마지막번호, 건수)`). 묶음 없는 조회 메서드는 만들지 않았다. 체결 저장은 `TradeDao`로 따로 있다 | ADR 0002, 0013 |
 | [module-view](images/module-view.png) | WAS 안에 모듈 10개(Data Accessor, 계좌·종목·주문 관리, 체결 처리, Controller, 복구·알림·조회 관리, 주문 접수) | 도메인 패키지 7개(`account`, `order`, `symbol`, `matching`, `notification`, `query`, `global`). 각 패키지 안을 `controller`/`service`/`dao`/`dto`/`entity`로 나눈다. 주문 접수는 `order`, 복구는 `matching`에 있다 | CLAUDE.md 패키지 규칙 |
-
-## 아직 구현하지 않은 그림
-
-| 그림 | 내용 | 예정 |
-|---|---|---|
-| [symbol-add](images/symbol-add.png) | 실행 중 종목 추가(종목관리Controller, 종목등록Service, 종목DAO 준비중등록·활성화) | 구현 계획 9단계(QAS 6) |

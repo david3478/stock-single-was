@@ -3,6 +3,7 @@ package com.example.stocksinglewas.symbol.dao;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -32,6 +33,20 @@ public class SymbolDao {
     /** 전체 종목. */
     public List<Symbol> findAll() {
         return jdbc.query("SELECT code, name, status FROM symbols ORDER BY code", SYMBOL);
+    }
+
+    /** 준비중등록. 새로 넣었으면 true, 같은 코드가 이미 있으면 false(동시 요청 포함). */
+    public boolean insertPreparing(String code, String name) {
+        try {
+            return jdbc.update("INSERT INTO symbols (code, name, status) VALUES (?, ?, 'PREPARING')", code, name) == 1;
+        } catch (DuplicateKeyException e) {
+            return false;
+        }
+    }
+
+    /** 활성화. 준비 중인 종목만 바꾼다. 이 호출이 바꿨으면 true, 이미 ACTIVE였으면 false. */
+    public boolean activate(String code) {
+        return jdbc.update("UPDATE symbols SET status = 'ACTIVE' WHERE code = ? AND status = 'PREPARING'", code) == 1;
     }
 
     /** 활성종목조회. */

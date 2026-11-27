@@ -17,5 +17,6 @@
 | [0011](0011-front-nginx-app-rds-split.md) | 프론트는 Nginx 컨테이너, 앱은 API만, DB는 RDS로 분리 | 채택 |
 | [0012](0012-measurement-environment-spec.md) | 측정 환경 사양: 앱 m7i.large, RDS db.m7g.large, 같은 AZ, 측정할 때만 켜는 부하 생성기 | 채택 |
 | [0013](0013-recovery-scope-monitor-warn-only.md) | 7단계는 기동 복구와 감시 경고까지, 종목 단위 자동 복구는 향후 과제 | 채택 |
+| [0014](0014-runtime-symbol-registration.md) | 실행 중 종목 추가: 준비중 등록 → 엔진 준비 → 활성화, 같은 요청 재시도로 완료 | 채택 |
 
 양식: 상태 / 맥락 / 결정 / 근거 / 결과와 비용 / 검증 / 재검토 조건

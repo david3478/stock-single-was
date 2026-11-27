@@ -38,6 +38,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.NOT_FOUND, new ErrorResponse(e.code(), e.getMessage()));
     }
 
+    @ExceptionHandler(SymbolConflictException.class)
+    ResponseEntity<ErrorResponse> symbolConflict(SymbolConflictException e) {
+        return error(HttpStatus.CONFLICT, new ErrorResponse("SYMBOL_CONFLICT", e.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ErrorResponse> invalid(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
