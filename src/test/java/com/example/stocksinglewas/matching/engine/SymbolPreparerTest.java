@@ -51,7 +51,8 @@ class SymbolPreparerTest {
         symbols = mock(SymbolDao.class);
         when(orders.findReceivedIds(anyString(), anyInt())).thenReturn(List.of());
         preparer = new SymbolPreparer(orders, symbols, mock(MatchConfirmService.class),
-                mock(NotificationPushService.class), new OrderDispatcher(), MATCHING, RECOVERY);
+                mock(NotificationPushService.class), new OrderDispatcher(), MATCHING, RECOVERY,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
     }
 
     @AfterEach

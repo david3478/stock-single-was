@@ -22,6 +22,8 @@ import com.example.stocksinglewas.order.entity.OrderStatus;
 import com.example.stocksinglewas.symbol.dao.SymbolDao;
 import com.example.stocksinglewas.symbol.entity.SymbolStatus;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PreDestroy;
 
 /**
@@ -48,12 +50,13 @@ public class SymbolPreparer {
     private final OrderDispatcher dispatcher;
     private final MatchingProperties props;
     private final RecoveryProperties recovery;
+    private final MeterRegistry meters;
     private final Map<String, Engine> engines = new ConcurrentHashMap<>();
     private volatile boolean startupRecovered;
 
     public SymbolPreparer(OrderDao orders, SymbolDao symbols, MatchConfirmService confirm,
                           NotificationPushService push, OrderDispatcher dispatcher, MatchingProperties props,
-                          RecoveryProperties recovery) {
+                          RecoveryProperties recovery, MeterRegistry meters) {
         this.orders = orders;
         this.symbols = symbols;
         this.confirm = confirm;
@@ -61,6 +64,7 @@ public class SymbolPreparer {
         this.dispatcher = dispatcher;
         this.props = props;
         this.recovery = recovery;
+        this.meters = meters;
     }
 
     /**
@@ -104,7 +108,9 @@ public class SymbolPreparer {
         SymbolQueue queue = new SymbolQueue(props.queueCapacity());
         queue.markOverflow();
 
-        SymbolWorker worker = new SymbolWorker(symbolCode, queue, book, nextSeq, orders, confirm, push, props);
+        SymbolWorker worker = new SymbolWorker(symbolCode, queue, book, nextSeq, orders, confirm, push, props,
+                Timer.builder("matching.confirm").description("T2 (match confirm) including commit, per attempt")
+                        .tag("symbol", symbolCode).publishPercentileHistogram().register(meters));
         engines.put(symbolCode, new Engine(queue, worker, restored));
         dispatcher.register(symbolCode, queue);
         worker.start();

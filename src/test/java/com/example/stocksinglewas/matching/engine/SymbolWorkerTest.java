@@ -31,6 +31,9 @@ import com.example.stocksinglewas.matching.engine.SymbolWorker.Outcome;
 import com.example.stocksinglewas.matching.service.MatchConfirmService;
 import com.example.stocksinglewas.notification.service.NotificationPushService;
 
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
 /**
  * 종목체결워커: 주문을 읽어 계획 → T2 커밋 → 커밋 성공 후에만 호가창 반영.
  * DB가 결과를 정하지 않는 순서·실패 처리 규칙이므로 DAO와 체결확정Service를 mock으로 대신한다.
@@ -43,6 +46,7 @@ class SymbolWorkerTest {
     OrderDao orders;
     MatchConfirmService confirm;
     NotificationPushService push;
+    Timer confirmTimer;
     SymbolQueue queue;
     OrderBook book;
     SymbolWorker worker;
@@ -52,9 +56,10 @@ class SymbolWorkerTest {
         orders = mock(OrderDao.class);
         confirm = mock(MatchConfirmService.class);
         push = mock(NotificationPushService.class);
+        confirmTimer = new SimpleMeterRegistry().timer("matching.confirm");
         queue = new SymbolQueue(PROPS.queueCapacity());
         book = new OrderBook();
-        worker = new SymbolWorker("AAA", queue, book, 10, orders, confirm, push, PROPS);
+        worker = new SymbolWorker("AAA", queue, book, 10, orders, confirm, push, PROPS, confirmTimer);
         when(confirm.confirm(anyString(), any())).thenReturn(true);
     }
 
@@ -110,6 +115,28 @@ class SymbolWorkerTest {
         worker.process(2);
 
         verify(push).signal(List.of(100L, 200L));
+    }
+
+    @Test
+    void 체결_확정은_커밋까지_포함한_시간을_시도마다_기록한다() {
+        received(1, 100, BUY, 1_000, 5);
+        when(confirm.confirm(anyString(), any()))
+                .thenThrow(new CannotAcquireLockException("deadlock"))
+                .thenReturn(true);
+
+        worker.process(1);
+
+        assertThat(confirmTimer.count()).as("데드락 1회 + 성공 1회").isEqualTo(2);
+    }
+
+    @Test
+    void 이미_처리된_주문은_체결_확정을_하지_않아_시간도_기록하지_않는다() {
+        when(orders.findById(1L)).thenReturn(Optional.of(new Order(1L, 100, "AAA", "c1", BUY, 1_000,
+                5, 5, OrderStatus.OPEN, 3L, null)));
+
+        worker.process(1);
+
+        assertThat(confirmTimer.count()).isZero();
     }
 
     // --- 건너뛰기: 중복 전달 ---

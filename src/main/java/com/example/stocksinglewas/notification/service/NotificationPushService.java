@@ -121,6 +121,12 @@ public class NotificationPushService {
             while (true) {
                 while (subscriber.dirty.getAndSet(false)) {
                     sendMissed(subscriber);
+                    if (subscriber.replayMarkerPending) {
+                        // 구독 시점에 커밋된 밀린 알림을 다 보냈다. 같은 계좌의 알림 번호는 커밋 순서와 같으므로(ADR 0003)
+                        // 이 번호 이하의 알림은 모두 이미 보냈다. 클라이언트가 단절 구간을 시계 없이 정할 수 있다(QAS 5)
+                        registry.sendReplayed(subscriber, subscriber.lastEventId);
+                        subscriber.replayMarkerPending = false;
+                    }
                 }
                 if (subscriber.heartbeatDue.getAndSet(false)) {
                     registry.sendHeartbeat(subscriber);

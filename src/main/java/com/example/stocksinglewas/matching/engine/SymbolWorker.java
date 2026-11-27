@@ -8,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.PessimisticLockingFailureException;
 
+import io.micrometer.core.instrument.Timer;
+
 import com.example.stocksinglewas.global.config.MatchingProperties;
 import com.example.stocksinglewas.order.dao.OrderDao;
 import com.example.stocksinglewas.order.entity.Order;
@@ -43,6 +45,8 @@ public final class SymbolWorker {
     private final MatchConfirmService confirm;
     private final NotificationPushService push;
     private final MatchingProperties props;
+    // 체결 확정(T2) 한 번의 시간. 커밋까지 포함하려고 트랜잭션 프록시 바깥에서 잰다. 병목 분석용
+    private final Timer confirmTimer;
 
     // 워커 스레드만 쓰고, 감시·메트릭이 다른 스레드에서 읽는다
     private volatile long nextSeq;
@@ -53,7 +57,7 @@ public final class SymbolWorker {
 
     public SymbolWorker(String symbolCode, SymbolQueue queue, OrderBook book, long nextSeq,
                         OrderDao orders, MatchConfirmService confirm, NotificationPushService push,
-                        MatchingProperties props) {
+                        MatchingProperties props, Timer confirmTimer) {
         this.symbolCode = symbolCode;
         this.queue = queue;
         this.book = book;
@@ -62,6 +66,7 @@ public final class SymbolWorker {
         this.confirm = confirm;
         this.push = push;
         this.props = props;
+        this.confirmTimer = confirmTimer;
     }
 
     /** 주문 하나를 처리한다. 예외가 나면 호가창과 순번은 바뀌지 않는다. */
@@ -112,7 +117,12 @@ public final class SymbolWorker {
     private boolean confirmWithRetry(MatchPlan plan) {
         for (int attempt = 0; ; attempt++) {
             try {
-                return confirm.confirm(symbolCode, plan);
+                Timer.Sample sample = Timer.start();
+                try {
+                    return confirm.confirm(symbolCode, plan);
+                } finally {
+                    sample.stop(confirmTimer);
+                }
             } catch (PessimisticLockingFailureException e) {
                 if (attempt >= props.deadlockMaxRetries()) {
                     throw e;
