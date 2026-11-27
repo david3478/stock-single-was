@@ -1,6 +1,7 @@
 package com.example.stocksinglewas;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -101,6 +102,26 @@ class OrderFlowIntegrationTest extends MySqlIntegrationTest {
         assertThat(db.cash(SELLER)).isEqualTo(5_000);
         assertThat(db.holdingOf(BUYER, "AAA")).containsExactly(5, 0);
         assertThat(db.count("trades")).isEqualTo(1);
+    }
+
+    @Test
+    void 체결_결과를_조회_API로_볼_수_있고_없는_계좌는_404다() throws Exception {
+        preparer.prepare("AAA");
+        long sell = placeViaHttp(SELLER, "s1", "SELL", 1_000, 3);
+        awaitStatus(sell, "OPEN");
+
+        mvc.perform(get("/api/symbols/AAA/orderbook"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.asks[0].price").value(1_000))
+                .andExpect(jsonPath("$.asks[0].quantity").value(3));
+        mvc.perform(get("/api/accounts/{id}/orders", SELLER))
+                .andExpect(jsonPath("$[0].orderId").value(sell))
+                .andExpect(jsonPath("$[0].status").value("OPEN"));
+        mvc.perform(get("/api/accounts/{id}/holdings", SELLER))
+                .andExpect(jsonPath("$[0].sellableQuantity").value(7));
+        mvc.perform(get("/api/accounts/{id}/balance", 999))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_NOT_FOUND"));
     }
 
     @Test

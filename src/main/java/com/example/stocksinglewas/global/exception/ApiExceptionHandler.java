@@ -27,6 +27,11 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(status).body(new ErrorResponse(e.reason().name(), e.getMessage()));
     }
 
+    @ExceptionHandler(NotFoundException.class)
+    ResponseEntity<ErrorResponse> notFound(NotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.code(), e.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ErrorResponse> invalid(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
