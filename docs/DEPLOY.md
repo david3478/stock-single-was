@@ -14,7 +14,9 @@ HTTP(80)는 내 IP에서만 연다. 앱과 RDS는 외부에서 접속할 수 없
 ## 0. 준비물과 상태 파일
 
 - Docker Desktop, AWS CLI v2. `aws sts get-caller-identity`가 내 계정을 출력해야 한다.
-- 셸 변수는 명령 사이에 남지 않으므로 만든 자원 ID를 상태 파일에 모은다. 비밀번호도 들어가므로 저장소 밖에 둔다.
+- 셸 변수는 명령 사이에 남지 않으므로 만든 자원 ID를 상태 파일에 모은다. 저장소 밖에 둔다.
+- DB 비밀번호는 상태 파일, 문서, SSM 명령 어디에도 쓰지 않는다. SSM Parameter Store의 SecureString
+  `/stock-single-was/db-password`에만 두고, 필요한 곳(RDS 생성, EC2의 `.env`)에서 그때 꺼내 쓴다.
 
 ```bash
 ST=~/stock-single-was-aws.env      # 저장소 밖. git에 올리지 않는다
@@ -45,6 +47,10 @@ aws iam attach-role-policy --role-name stock-single-was-ec2 --policy-arn arn:aws
 aws iam attach-role-policy --role-name stock-single-was-ec2 --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
 aws iam create-instance-profile --instance-profile-name stock-single-was-ec2
 aws iam add-role-to-instance-profile --instance-profile-name stock-single-was-ec2 --role-name stock-single-was-ec2
+
+# DB 비밀번호 파라미터 하나만 읽게 한다. AWS 관리 키(aws/ssm)라 KMS 권한은 따로 필요 없다
+aws iam put-role-policy --role-name stock-single-was-ec2 --policy-name read-db-password --policy-document \
+  "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"ssm:GetParameter\",\"Resource\":\"arn:aws:ssm:ap-northeast-2:$ACCOUNT:parameter/stock-single-was/db-password\"}]}"
 ```
 
 ## 2. 보안 그룹 (한 번만)
@@ -66,16 +72,19 @@ printf 'EC2_SG=%s\nRDS_SG=%s\n' $EC2_SG $RDS_SG >> $ST
 
 ## 3. RDS 만들기 (한 번만, 약 10분)
 
-비밀번호는 무작위로 만들어 상태 파일과 EC2의 `.env`에만 둔다.
+비밀번호는 무작위로 만들어 Parameter Store(SecureString, KMS 암호화)에만 저장한다.
 
 ```bash
 . $ST
-DB_PASSWORD=$(openssl rand -base64 36 | tr -dc 'A-Za-z0-9' | head -c 24)
-printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD" >> $ST
+export MSYS_NO_PATHCONV=1
+aws ssm put-parameter --name /stock-single-was/db-password --type SecureString \
+  --value "$(openssl rand -base64 36 | tr -dc 'A-Za-z0-9' | head -c 24)"
+db_password() { aws ssm get-parameter --name /stock-single-was/db-password --with-decryption --query Parameter.Value --output text; }
+
 aws rds create-db-instance --db-instance-identifier stock-single-was \
   --engine mysql --engine-version 8.4.13 --db-instance-class db.m7g.large \
   --allocated-storage 20 --storage-type gp3 \
-  --master-username ssw --master-user-password "$DB_PASSWORD" --db-name stock_single_was \
+  --master-username ssw --master-user-password "$(db_password)" --db-name stock_single_was \
   --vpc-security-group-ids $RDS_SG --availability-zone ap-northeast-2a \
   --no-publicly-accessible --no-multi-az --backup-retention-period 0 --no-deletion-protection
 ```
@@ -141,8 +150,8 @@ ssm_run() {
 }
 ```
 
-SSM 명령 내용은 계정의 명령 기록에 남는다. 7단계의 `.env`(DB 비밀번호 포함)도 그렇다. 계정 밖으로 나가지는 않지만,
-여러 사람이 쓰는 계정이면 Parameter Store(SecureString)로 바꾼다.
+SSM 명령 내용은 계정의 명령 기록(`aws ssm list-commands`)과 EC2 디스크(SSM 에이전트 작업 폴더)에 남는다.
+CloudTrail에는 명령 내용이 가려져 남는다. 그래서 SSM 명령에는 비밀번호를 넣지 않고, EC2 안에서 Parameter Store를 읽는다.
 
 ## 6. 이미지 빌드와 ECR 업로드 (배포할 때마다)
 
@@ -168,11 +177,13 @@ printf 'SHA=%s\n' $SHA >> $ST
   echo "echo $(base64 -w0 scripts/seed/demo-seed.sql) | base64 -d > demo-seed.sql"; } > put-files.sh
 ssm_run put-files.sh
 
-ENVB64=$(printf 'APP_IMAGE=%s/stock-single-was:%s\nFRONT_IMAGE=%s/stock-single-was-front:%s\nHTTP_PORT=80\nDB_HOST=%s\nDB_USER=ssw\nDB_PASSWORD=%s\n' \
-  $REGISTRY $SHA $REGISTRY $SHA $DB_HOST "$DB_PASSWORD" | base64 -w0)
 cat > up.sh <<EOF
 set -e; cd /opt/stock; umask 077
-echo $ENVB64 | base64 -d > .env
+printf 'APP_IMAGE=%s\nFRONT_IMAGE=%s\nHTTP_PORT=80\nDB_HOST=%s\nDB_USER=ssw\n' \
+  $REGISTRY/stock-single-was:$SHA $REGISTRY/stock-single-was-front:$SHA $DB_HOST > .env
+# 비밀번호는 EC2 역할로 Parameter Store에서 직접 읽는다. SSM 명령에는 들어가지 않는다
+printf 'DB_PASSWORD=%s\n' "\$(aws ssm get-parameter --region ap-northeast-2 --name /stock-single-was/db-password \
+  --with-decryption --query Parameter.Value --output text)" >> .env
 aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin $REGISTRY >/dev/null
 docker compose up -d
 for i in \$(seq 1 60); do [ "\$(docker inspect -f '{{.State.Health.Status}}' \$(docker compose ps -q app))" = healthy ] && break; sleep 3; done
@@ -241,6 +252,32 @@ printf "cd /opt/stock && sed -i 's|^FRONT_IMAGE=.*|FRONT_IMAGE=%s/stock-single-w
 ssm_run redeploy.sh
 ```
 
+## DB 비밀번호 바꾸기
+
+비밀번호가 새어 나갔을 수 있으면 바꾼다. 앱이 다시 뜨는 동안(약 1분) 주문을 받지 못한다.
+
+```bash
+. $ST
+export MSYS_NO_PATHCONV=1
+aws ssm put-parameter --name /stock-single-was/db-password --type SecureString --overwrite \
+  --value "$(openssl rand -base64 36 | tr -dc 'A-Za-z0-9' | head -c 24)"
+aws rds modify-db-instance --db-instance-identifier stock-single-was --apply-immediately \
+  --master-user-password "$(aws ssm get-parameter --name /stock-single-was/db-password --with-decryption --query Parameter.Value --output text)"
+# 상태가 available이고 PendingModifiedValues가 비면 반영된 것이다
+aws rds describe-db-instances --db-instance-identifier stock-single-was \
+  --query 'DBInstances[0].[DBInstanceStatus,PendingModifiedValues.MasterUserPassword]' --output text
+
+cat > rotate-env.sh <<'EOF'
+set -e; cd /opt/stock; umask 077
+pw=$(aws ssm get-parameter --region ap-northeast-2 --name /stock-single-was/db-password --with-decryption --query Parameter.Value --output text)
+grep -v '^DB_PASSWORD=' .env > .env.new && printf 'DB_PASSWORD=%s\n' "$pw" >> .env.new && mv .env.new .env
+docker compose up -d --force-recreate app
+EOF
+ssm_run rotate-env.sh
+```
+
+2026-11-27에 처음 배포 때 SSM 명령에 넣었던 비밀번호를 이 절차로 바꿨다. 옛 비밀번호는 SSM 명령 기록에 남아 있지만 더는 쓸 수 없다.
+
 ## 비용, 중지, 정리
 
 요금은 ADR 0012 참고(앱 + RDS 켜 두면 시간당 약 $0.36).
@@ -277,4 +314,5 @@ aws rds wait db-instance-deleted --db-instance-identifier stock-single-was
 aws ec2 wait instance-terminated --instance-ids $INSTANCE
 aws ec2 delete-security-group --group-id $RDS_SG
 aws ec2 delete-security-group --group-id $EC2_SG
+MSYS_NO_PATHCONV=1 aws ssm delete-parameter --name /stock-single-was/db-password
 ```
