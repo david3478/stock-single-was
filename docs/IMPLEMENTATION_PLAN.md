@@ -31,7 +31,7 @@ PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포�
 - [x] `POST /api/accounts/{accountId}/orders`: 조건부 UPDATE 예약 + `RECEIVED` 저장 + 커밋 후 대기열 전달
 - [x] 잔고·수량 부족 거절, 같은 계좌 동시 매도 1건만 성공
 - [x] clientOrderId 재요청 시 기존 주문 반환
-- [ ] 커밋 결과 불명 처리(ADR 0005 ②)
+- [x] 커밋 결과 불명 처리(ADR 0005 ②): 별도 코드 없이 같은 clientOrderId 재요청의 재전달과 감시 경고로 처리(ADR 0013), 테스트로 고정
 
 ## 4. 종목 워커와 T2
 - [x] `SymbolQueue` + `SymbolWorker` + `OrderBook`, `SymbolPreparer`가 종목별로 생성. 계획 → 커밋(`MatchConfirmService`) → 메모리 반영
@@ -53,10 +53,11 @@ PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포�
 - [x] 데모 화면을 SSE로 전환(EventSource, 알림 수신 시 잔고·주문 갱신)
 
 ## 7. 복구와 감시
-- [ ] `RecoveryManager`: 잔여 주문 (price, seq) 복원, RECEIVED ID 순 복원, nextSeq 복원, 완료 전 readiness DOWN
-- [ ] 종목 단위 복구(ADR 0005 ③)
-- [ ] 상태 불일치 감시와 메트릭(ADR 0005)
-- [ ] 장애 테스트: T1 후 전달 전 종료, T2 커밋 전후 종료
+- [x] 기동 복구: 잔여 주문을 상태별·주문번호 순 묶음으로 (price, seq) 복원, RECEIVED ID 순 처리, nextSeq 복원, 완료 전 readiness DOWN
+- [ ] 종목 단위 자동 복구(ADR 0005 ③): 설계만 하고 향후 과제(ADR 0013)
+- [x] 상태 불일치 감시와 메트릭: 경고만, 자동 복구 실행 없음(ADR 0013). 워커 FAILED는 메트릭으로 바로 보임
+- [x] 장애 테스트: T1 후 전달 전 종료, T2 커밋 전후 종료, 재시작 후 순서·순번
+- [ ] QAS 4 측정(EC2 강제 종료): 절차 `docs/measurement/qas4-server-recovery.md`
 
 ## 8. 실행 경로와 배포
 - [ ] HTTP → 워커 → DB → SSE 전 구간 테스트 (첫 실행 가능 버전 완료 기준)
@@ -67,3 +68,4 @@ PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포�
 
 ## 10. 측정
 - [ ] 부하 도구(SSE 결과 수신까지 측정), 단일 WAS 기준선, 병목 ADR
+- [ ] 기존 QAS 2·3 초안(`loadtest/order-latency.js`, `burst.js`, `analyze-*.sql`, 아직 커밋하지 않음)을 고친 뒤 올린다: 결과 시각을 DB 알림 저장이 아니라 SSE 수신으로, 생성기와 DB가 다른 서버라 두 시계를 빼지 않는 방식으로, 미전송 판정을 ADR 0012 규칙으로
