@@ -74,5 +74,8 @@ PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포�
 - [ ] QAS 6 측정 스크립트·절차(10단계, 기존 종목 부하 + 종목 10개 순차 등록 + 시험 보유 수량 + 체결 검증). 커넥션 풀 크기를 종목 20개 기준으로 확정
 
 ## 10. 측정
-- [ ] 부하 도구(SSE 결과 수신까지 측정), 단일 WAS 기준선, 병목 ADR
+- [x] 측정 설계(`docs/measurement/plan-stage10.md`), QAS 2·3 정의 정리(가이드 §10 변경 기록)
+- [ ] 도구·앱 변경·사전 설정 PR: SSE 수집기, 고정 응답 서버, QAS 2·3·5·6 스크립트, 대조 SQL, 측정용 seed, `:replayed` 주석, T2 타이머, Nginx worker_connections, 로컬 검증
+- [ ] AWS 측정: 보정 → QAS 2 → QAS 3 → QAS 5 → QAS 4 재측정(현재 코드 + 진단) → QAS 6
+- [ ] 결과 PR: QAS별 테스트 환경 / 스크립트(케이스) / 결과, 단일 WAS 기준선, 병목 ADR
 - [ ] 기존 QAS 2·3 초안(`loadtest/order-latency.js`, `burst.js`, `analyze-*.sql`, 아직 커밋하지 않음)을 고친 뒤 올린다: 결과 시각을 DB 알림 저장이 아니라 SSE 수신으로, 생성기와 DB가 다른 서버라 두 시계를 빼지 않는 방식으로, 미전송 판정을 ADR 0012 규칙으로
