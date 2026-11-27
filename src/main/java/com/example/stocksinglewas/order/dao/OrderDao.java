@@ -15,6 +15,7 @@ import org.springframework.stereotype.Repository;
 
 import com.example.stocksinglewas.query.dto.OrderHistoryResponse;
 import com.example.stocksinglewas.query.dto.PriceLevel;
+import com.example.stocksinglewas.order.dto.ReceivedSummary;
 import com.example.stocksinglewas.order.entity.Order;
 import com.example.stocksinglewas.order.entity.OrderStatus;
 import com.example.stocksinglewas.order.entity.Side;
@@ -45,19 +46,44 @@ public class OrderDao {
     /**
      * 미처리선두묶음조회: 종목의 RECEIVED 주문번호를 ID 순으로 앞에서부터 읽는다.
      * 영구 커서를 쓰지 않는다. 늦게 커밋된 작은 ID도 다음 조회에 나타나야 하기 때문이다(ADR 0002, 0005).
+     * 인덱스를 고정하는 이유는 {@link #findRestingAfter} 참고.
      */
     public List<Long> findReceivedIds(String symbolCode, int limit) {
         return jdbc.queryForList("""
-                SELECT id FROM orders WHERE symbol_code = ? AND status = 'RECEIVED' ORDER BY id LIMIT ?""",
+                SELECT id FROM orders FORCE INDEX (ix_orders_recovery)
+                WHERE symbol_code = ? AND status = 'RECEIVED' ORDER BY id LIMIT ?""",
                 Long.class, symbolCode, limit);
     }
 
-    /** 잔여주문조회: 호가창에 되살릴 대기 주문. */
-    public List<Order> findResting(String symbolCode) {
+    /**
+     * 잔여주문묶음조회: 호가창에 되살릴 대기 주문을 상태 하나씩, 주문번호 순으로 이어서 읽는다.
+     * 상태 하나 + (symbol_code, status, id) 인덱스여야 인덱스 순서대로 읽어 정렬 없이 limit에서 멈춘다.
+     * MySQL 8.4 EXPLAIN으로 확인했다: 두 상태를 IN으로 묶으면 남은 행 전체를 묶음마다 정렬하고, 한 종목에 주문이 몰리면
+     * 상태가 하나여도 옵티마이저가 (symbol_code, seq) 인덱스를 골라 정렬한다. 그래서 상태를 나눠 읽고 인덱스를 고정한다.
+     * 기동 복구는 서버가 멈춘 뒤 한 번 읽으므로 커서로 이어 읽어도 늦게 커밋된 행을 놓치지 않는다(ADR 0002).
+     */
+    public List<Order> findRestingAfter(String symbolCode, OrderStatus status, long afterId, int limit) {
         return jdbc.query("""
-                SELECT * FROM orders
-                WHERE symbol_code = ? AND status IN ('OPEN', 'PARTIALLY_FILLED')""",
-                ORDER, symbolCode);
+                SELECT * FROM orders FORCE INDEX (ix_orders_recovery)
+                WHERE symbol_code = ? AND status = ? AND id > ?
+                ORDER BY id
+                LIMIT ?""",
+                ORDER, symbolCode, status.name(), afterId, limit);
+    }
+
+    /** 미처리주문요약: 체결감시용. 건수와 가장 먼저 접수된 주문의 대기 시간(DB 시계 기준). */
+    public ReceivedSummary findReceivedSummary(String symbolCode) {
+        long count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM orders WHERE symbol_code = ? AND status = 'RECEIVED'", Long.class, symbolCode);
+        if (count == 0) {
+            return new ReceivedSummary(0, 0);
+        }
+        List<Double> age = jdbc.queryForList("""
+                SELECT TIMESTAMPDIFF(MICROSECOND, created_at, NOW(6)) / 1000000.0 FROM orders FORCE INDEX (ix_orders_recovery)
+                WHERE symbol_code = ? AND status = 'RECEIVED'
+                ORDER BY id
+                LIMIT 1""", Double.class, symbolCode);
+        return new ReceivedSummary(count, age.isEmpty() ? 0 : age.getFirst());
     }
 
     /** 최대처리순번조회. 완료된 주문까지 포함해야 새 순번이 기존 순번과 겹치지 않는다. 없으면 0. */

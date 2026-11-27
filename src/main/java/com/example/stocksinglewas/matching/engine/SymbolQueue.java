@@ -38,6 +38,11 @@ public final class SymbolQueue {
         return orderIds.poll(timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
+    /** 대기열에 남은 주문 수. 감시용. */
+    public int size() {
+        return orderIds.size();
+    }
+
     public boolean overflowed() {
         return overflow.get();
     }
