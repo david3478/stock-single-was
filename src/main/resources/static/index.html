@@ -27,8 +27,8 @@
         </div>
       </form>
       <p id="message" class="message"></p>
-      <p class="hint">접수 후 종목 워커가 체결을 처리합니다. 상태가 <b>접수됨 → 대기 / 체결 완료</b>로 바뀌는지 보세요.
-        호가를 누르면 그 가격이 입력됩니다.</p>
+      <p class="hint">접수 후 종목 워커가 체결을 처리합니다. 처리 결과는 실시간 알림(SSE)으로 오고,
+        알림을 받으면 잔고와 내 주문이 바로 바뀝니다. 호가창은 1초마다 갱신하며, 호가를 누르면 그 가격이 입력됩니다.</p>
     </section>
 
     <section class="panel">
@@ -47,6 +47,11 @@
         <thead><tr><th>종목</th><th>보유</th><th>매도 주문 중</th><th>매도 가능</th></tr></thead>
         <tbody id="holdings"></tbody>
       </table>
+    </section>
+
+    <section class="panel">
+      <h2>실시간 알림</h2>
+      <ol id="notifications" class="notifications"></ol>
     </section>
 
     <section class="panel wide">

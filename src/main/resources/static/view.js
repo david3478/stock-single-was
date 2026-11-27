@@ -104,6 +104,33 @@ export function renderOrderBook(target, book, onPick) {
   );
 }
 
+function notificationText(n) {
+  const status = STATUS_LABEL[n.status] ?? n.status;
+  if (n.type === 'ORDER_OPEN') {
+    return `주문 #${n.orderId} 체결 상대 없음 → ${status} (${won(n.remaining)}주)`;
+  }
+  return `주문 #${n.orderId} ${won(n.quantity)}주 체결 @${won(n.price)}원 → ${status} (남은 ${won(n.remaining)}주)`;
+}
+
+/** 받은 알림을 맨 위에 추가하고 최근 max건만 남긴다. */
+export function addNotification(target, n, max) {
+  const time = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+  const item = el('li', undefined, 'notification-' + n.type.toLowerCase());
+  item.append(el('span', time, 'time'), el('span', notificationText(n)), el('span', `#${n.id}`, 'event-id'));
+  item.title = `알림 번호 ${n.id}`;
+  target.prepend(item);
+  while (target.children.length > max) target.lastElementChild.remove();
+}
+
+export function clearNotifications(target) {
+  target.replaceChildren();
+}
+
+export function showConnection(target, text, isProblem) {
+  target.textContent = text;
+  target.className = isProblem ? 'connection error' : 'connection';
+}
+
 export function showMessage(target, text, kind) {
   target.textContent = text;
   target.className = 'message ' + kind;

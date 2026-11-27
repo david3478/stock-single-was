@@ -50,7 +50,7 @@ PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포�
 ## 6. SSE 알림
 - [x] SSE 전송(`NotificationPushService`, `SseEmitterRegistry`): 계좌별 연결, Last-Event-ID 재전송, 연결별 송신 직렬화, 별도 송신 실행 자원, 연결유지
 - [x] ADR 0003 검증 테스트 3종(결정적 재현, 스트레스, SSE 끝단)
-- [ ] 데모 화면을 SSE로 전환(EventSource, 알림 수신 시 잔고·주문 갱신)
+- [x] 데모 화면을 SSE로 전환(EventSource, 알림 수신 시 잔고·주문 갱신)
 
 ## 7. 복구와 감시
 - [ ] `RecoveryManager`: 잔여 주문 (price, seq) 복원, RECEIVED ID 순 복원, nextSeq 복원, 완료 전 readiness DOWN
