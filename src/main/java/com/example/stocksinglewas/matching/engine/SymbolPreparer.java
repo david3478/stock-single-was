@@ -15,6 +15,7 @@ import com.example.stocksinglewas.symbol.dao.SymbolDao;
 import com.example.stocksinglewas.order.entity.Order;
 import com.example.stocksinglewas.order.entity.Side;
 import com.example.stocksinglewas.matching.service.MatchConfirmService;
+import com.example.stocksinglewas.notification.service.NotificationPushService;
 
 import jakarta.annotation.PreDestroy;
 
@@ -34,15 +35,17 @@ public class SymbolPreparer {
     private final OrderDao orders;
     private final SymbolDao symbols;
     private final MatchConfirmService confirm;
+    private final NotificationPushService push;
     private final OrderDispatcher dispatcher;
     private final MatchingProperties props;
     private final Map<String, SymbolWorker> workers = new ConcurrentHashMap<>();
 
     public SymbolPreparer(OrderDao orders, SymbolDao symbols, MatchConfirmService confirm,
-                          OrderDispatcher dispatcher, MatchingProperties props) {
+                          NotificationPushService push, OrderDispatcher dispatcher, MatchingProperties props) {
         this.orders = orders;
         this.symbols = symbols;
         this.confirm = confirm;
+        this.push = push;
         this.dispatcher = dispatcher;
         this.props = props;
     }
@@ -66,7 +69,7 @@ public class SymbolPreparer {
         SymbolQueue queue = new SymbolQueue(props.queueCapacity());
         queue.markOverflow();
 
-        SymbolWorker worker = new SymbolWorker(symbolCode, queue, book, nextSeq, orders, confirm, props);
+        SymbolWorker worker = new SymbolWorker(symbolCode, queue, book, nextSeq, orders, confirm, push, props);
         workers.put(symbolCode, worker);
         dispatcher.register(symbolCode, queue);
         worker.start();

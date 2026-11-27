@@ -13,6 +13,7 @@ import com.example.stocksinglewas.order.dao.OrderDao;
 import com.example.stocksinglewas.order.entity.Order;
 import com.example.stocksinglewas.order.entity.OrderStatus;
 import com.example.stocksinglewas.matching.service.MatchConfirmService;
+import com.example.stocksinglewas.notification.service.NotificationPushService;
 
 /**
  * 종목체결워커. 종목 하나에 스레드 하나이며, 이 스레드만 그 종목의 호가창을 바꾼다.
@@ -23,6 +24,7 @@ import com.example.stocksinglewas.matching.service.MatchConfirmService;
  *   <li>호가창을 바꾸지 않고 체결 계획을 만든다.</li>
  *   <li>체결확정Service로 T2를 커밋한다. 데드락이면 T2 전체를 다시 시도한다.</li>
  *   <li>커밋이 성공한 뒤에만 계획을 호가창에 반영하고 처리순번을 하나 올린다.</li>
+ *   <li>관련 계좌에 알림 신호를 준다. 전송은 송신 스레드가 하므로 워커는 기다리지 않는다.</li>
  * </ol>
  * T2가 실패하면 계획을 버리기만 하면 되므로 호가창은 그대로다.
  */
@@ -39,6 +41,7 @@ public final class SymbolWorker {
     private final OrderBook book;
     private final OrderDao orders;
     private final MatchConfirmService confirm;
+    private final NotificationPushService push;
     private final MatchingProperties props;
 
     private long nextSeq;
@@ -47,13 +50,15 @@ public final class SymbolWorker {
     private Thread thread;
 
     public SymbolWorker(String symbolCode, SymbolQueue queue, OrderBook book, long nextSeq,
-                        OrderDao orders, MatchConfirmService confirm, MatchingProperties props) {
+                        OrderDao orders, MatchConfirmService confirm, NotificationPushService push,
+                        MatchingProperties props) {
         this.symbolCode = symbolCode;
         this.queue = queue;
         this.book = book;
         this.nextSeq = nextSeq;
         this.orders = orders;
         this.confirm = confirm;
+        this.push = push;
         this.props = props;
     }
 
@@ -71,6 +76,7 @@ public final class SymbolWorker {
         }
         book.apply(plan);
         nextSeq++;
+        push.signal(plan.accountIds());
         return Outcome.APPLIED;
     }
 

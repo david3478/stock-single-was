@@ -29,6 +29,7 @@ import com.example.stocksinglewas.order.entity.OrderStatus;
 import com.example.stocksinglewas.order.entity.Side;
 import com.example.stocksinglewas.matching.engine.SymbolWorker.Outcome;
 import com.example.stocksinglewas.matching.service.MatchConfirmService;
+import com.example.stocksinglewas.notification.service.NotificationPushService;
 
 /**
  * 종목체결워커: 주문을 읽어 계획 → T2 커밋 → 커밋 성공 후에만 호가창 반영.
@@ -41,6 +42,7 @@ class SymbolWorkerTest {
 
     OrderDao orders;
     MatchConfirmService confirm;
+    NotificationPushService push;
     SymbolQueue queue;
     OrderBook book;
     SymbolWorker worker;
@@ -49,9 +51,10 @@ class SymbolWorkerTest {
     void setUp() {
         orders = mock(OrderDao.class);
         confirm = mock(MatchConfirmService.class);
+        push = mock(NotificationPushService.class);
         queue = new SymbolQueue(PROPS.queueCapacity());
         book = new OrderBook();
-        worker = new SymbolWorker("AAA", queue, book, 10, orders, confirm, PROPS);
+        worker = new SymbolWorker("AAA", queue, book, 10, orders, confirm, push, PROPS);
         when(confirm.confirm(anyString(), any())).thenReturn(true);
     }
 
@@ -99,6 +102,16 @@ class SymbolWorkerTest {
         assertThat(book.orders(BUY)).hasSize(1);
     }
 
+    @Test
+    void 커밋_후_관련_계좌들에_알림_신호를_보낸다() {
+        book.add(new RestingOrder(1, 100, SELL, 1_000, 5, 3));
+        received(2, 200, BUY, 1_000, 5);
+
+        worker.process(2);
+
+        verify(push).signal(List.of(100L, 200L));
+    }
+
     // --- 건너뛰기: 중복 전달 ---
 
     @Test
@@ -128,6 +141,7 @@ class SymbolWorkerTest {
 
         assertThat(book.orders(BUY)).isEmpty();
         assertThat(worker.nextSeq()).isEqualTo(10);
+        verify(push, never()).signal(any());
     }
 
     // --- 실패: 호가창과 순번은 그대로 ---
@@ -143,6 +157,7 @@ class SymbolWorkerTest {
 
         assertThat(book.orders(SELL)).isEqualTo(before);
         assertThat(worker.nextSeq()).isEqualTo(10);
+        verify(push, never()).signal(any());
     }
 
     @Test
