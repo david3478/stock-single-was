@@ -57,7 +57,7 @@ PR 구성: 1~4단계는 PR 하나(`feat/order-matching`), 5단계와 첫 배포�
 - [ ] 종목 단위 자동 복구(ADR 0005 ③): 설계만 하고 향후 과제(ADR 0013)
 - [x] 상태 불일치 감시와 메트릭: 경고만, 자동 복구 실행 없음(ADR 0013). 워커 FAILED는 메트릭으로 바로 보임
 - [x] 장애 테스트: T1 후 전달 전 종료, T2 커밋 전후 종료, 재시작 후 순서·순번
-- [ ] QAS 4 측정(EC2 강제 종료): 절차 `docs/measurement/qas4-server-recovery.md`
+- [x] QAS 4 측정(EC2 강제 종료): 유실 0, 복구 시간 17.73초(2026-11-27). 절차와 결과 `docs/measurement/qas4-server-recovery.md`
 
 ## 8. 실행 경로와 배포
 - [ ] HTTP → 워커 → DB → SSE 전 구간 테스트 (첫 실행 가능 버전 완료 기준)
