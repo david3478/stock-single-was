@@ -9,3 +9,4 @@ scripts
 deploy
 docker-compose.yml
 *.md
+frontend
