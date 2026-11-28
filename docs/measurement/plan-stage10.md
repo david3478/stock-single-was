@@ -246,7 +246,7 @@ QAS 2와 결과 기준을 통일하기 위해서다. 체결은 대기 등록보�
 | 항목 | 현재 | 확인·변경 |
 |---|---|---|
 | 동시 SSE 연결 | — | 최대 1,000(QAS 5) |
-| Nginx | `worker_processes auto`(m7i.large 2개), `worker_connections 1024` → 연결 약 2,048 | SSE 1,000개 = Nginx 연결 2,000개 + k6 HTTP 연결이라 부족하다. 올린다(예: 8,192). 전후 값을 기록하고 측정 중 앱 EC2에서 `ss`로 실제 연결 수를 본다 |
+| Nginx | `worker_processes auto`(m7i.large 2개), `worker_connections 1024` → 연결 약 2,048 | SSE 1,000개 = Nginx 연결 2,000개 + k6 HTTP 연결이라 부족하다. **`worker_connections 8192`, `worker_rlimit_nofile 16384`, 컨테이너 `nofile 65536`으로 올렸다**(`frontend/nginx-main.conf`, `deploy/compose.yml`). 로컬 확인(작업 프로세스 2개가 되도록 CPU 2개로 묶음, SSE 1,500개): 변경 전 1,020개만 연결·Nginx "worker_connections are not enough" 27회, 변경 후 1,500개 모두 연결·오류 0. 측정 중 앱 EC2에서 `ss`로 실제 연결 수를 보고 오류 로그에서 같은 문구를 확인한다 |
 | DB 커넥션 풀 | `maximum-pool-size` 30 | 미리 늘리지 않는다. 측정 중 `hikaricp.connections.active/pending`과 획득 시간을 기록하고, 대기가 관찰되면 그때 결정한다 |
 | 보정 | — | 고정 응답 서버로 본 시험과 같은 요청·SSE·기록 구성에서 목표의 2배. 통과해도 본 측정 중 미전송·수집기 상태·생성기 자원을 계속 본다 |
 | 시계 | — | 생성기 `chronyc tracking` 전후 |
@@ -273,7 +273,7 @@ QAS 6 뒤에 다른 시험을 하려면 seed로 초기화하고 앱을 재시작
 | 항목 | 1회차 | 재측정 | 같은가 |
 |---|---|---|---|
 | 앱 이미지 | `40ac717` | 측정 시점 최신(9단계 종목 추가 포함: 기동 때 종목 전체 조회 1회 추가, `:replayed`, T2 타이머) | 다름 |
-| Nginx | `worker_connections 1024` | 7절에서 올린 값 | 다름 |
+| Nginx | `worker_connections 1024` | `8192`(작업 프로세스당, `worker_rlimit_nofile 16384`, 컨테이너 nofile 65536) | 다름 |
 | 진단 | 없음 | 앱 EC2 `sar` 1초, RDS CloudWatch, 커넥션 풀 메트릭, 종목별 복원 시간 | 다름(소량 부하) |
 | seed, 대기 주문, 유입, 종료 방식 | 데모 seed, 10만, 200건/초 180초, 60초 뒤 SIGKILL | 같게 | 같음 |
 
