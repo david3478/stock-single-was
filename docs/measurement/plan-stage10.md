@@ -214,7 +214,7 @@ QAS 2와 결과 기준을 통일하기 위해서다. 체결은 대기 등록보�
 | `loadtest/qas3/burst.js` | 초안 수정 | 예열 + 폭주, 1.2 기록 |
 | `loadtest/qas5/orders.js` | 새로 | 일정 유입 매수 |
 | `scripts/seed/pre-sells.sql` | 새로(완료) | 사전 매도를 SQL로 넣는다(2.2). 종목마다 `@sym`, `@n`을 지정해 실행 |
-| `loadtest/qas6/` | 새로 | 가이드 §10 QAS 6 절차 |
+| `loadtest/qas6/` | 새로(완료) | `existing-load.js`(기존 10종목 부하), `register.sh`(한 종목씩 등록·ACTIVE 확인·재시작 전후 비교), `new-symbol-holdings.sql`(시험 데이터), `verify-new.js`(신규 종목 체결), 판정은 `analysis/qas6.sql`. register.sh는 k6와 같은 생성기에서 돌려 같은 시계를 쓴다 |
 | `loadtest/analysis/` | 새로(QAS 2·3·5 완료) | `schema.sql`·`load.sh`(묶음 INSERT 적재)·`classify.sql`·`checks.sql`(공통 분류·점검), `qas2.sql`·`qas3.sql`(판정), `qas5.sql`(단절 구간 `(L, R]`, L은 끊기 직전 실제로 받은 마지막 번호, 겹친 구간은 한 번만 셈). 실패를 일부러 만든 실행으로 QAS 2의 B·C·E·G, QAS 5의 전달 누락·생성 누락 검증. D와 중복 수신은 미검증 |
 | `scripts/seed/measure-seed.sql` | 새로(완료) | 계좌 2,000, 종목 10, 보유 |
 

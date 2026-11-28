@@ -1,9 +1,10 @@
 #!/bin/bash
 # k6 주문 기록과 SSE 수집기 기록을 measure 스키마에 넣는다(묶음 INSERT. LOAD DATA LOCAL INFILE 서버 설정에 의존하지 않는다).
-#   MYSQL="mysql -h HOST -u USER -pPASS" loadtest/analysis/load.sh <run> <k6 로그> <수집기 OUT 폴더>
+#   MYSQL="mysql -h HOST -u USER -pPASS" loadtest/analysis/load.sh <run> <k6 로그> [수집기 OUT 폴더]
+# 수집기 폴더를 빼면(QAS 6) k6 기록만 넣는다.
 # 같은 run을 다시 넣으면 먼저 지우고 넣는다. 측정의 부하·관찰이 끝난 뒤에만 실행한다.
 set -euo pipefail
-RUN=$1; K6LOG=$2; COLL=$3
+RUN=$1; K6LOG=$2; COLL=${3:-}
 : "${MYSQL:?MYSQL command is required}"
 here=$(dirname "$0")
 BATCH=1000
@@ -23,6 +24,8 @@ $MYSQL < "$here/schema.sql"
       if (n % b == 0) { if (n) print ";"; printf "INSERT INTO measure.k6_orders VALUES" } else printf ","
       printf "(\x27%s\x27,%s,%s,\x27%s\x27,\x27%s\x27,%s,%s,%s,%s)", run, $2, $3, $4, $5, $6, $7, ($8=="-"?"NULL":$8), $9
       n++ } END { if (n) print ";" }' "$K6LOG"
+
+  [ -z "$COLL" ] && exit 0
 
   # account,gen,event_id,type,order_id,trade_id,recv_ms
   awk -F, -v run="$RUN" -v b=$BATCH 'NR>1{
