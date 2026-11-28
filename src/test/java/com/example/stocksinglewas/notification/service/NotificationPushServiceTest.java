@@ -134,6 +134,53 @@ class NotificationPushServiceTest {
         assertThat(emitter().raw.getFirst()).contains("retry:3000");
     }
 
+    // --- 밀린 알림 전송 완료 표시(:replayed, QAS 5 단절 구간 판정용) ---
+
+    @Test
+    void 구독하면_밀린_알림을_다_보낸_뒤_마지막으로_보낸_번호를_한_번_표시한다() {
+        stored(1, 2, 3, 4, 5);
+
+        service.subscribe(ACCOUNT, 2L);
+        executor.runAll();
+        stored(6);
+        service.signal(List.of(ACCOUNT));
+        executor.runAll();
+
+        assertThat(emitter().sentIds()).containsExactly(3L, 4L, 5L, 6L);
+        assertThat(emitter().comments()).containsExactly("connected", "replayed 5");
+        assertThat(emitter().indexOfText(":replayed 5")).as("밀린 알림 뒤, 새 알림 앞")
+                .isGreaterThan(emitter().indexOfId(5)).isLessThan(emitter().indexOfId(6));
+    }
+
+    @Test
+    void 밀린_알림이_없으면_시작_번호를_표시한다() {
+        stored(1, 2);
+
+        service.subscribe(ACCOUNT, null);
+        executor.runAll();
+
+        assertThat(emitter().sentIds()).isEmpty();
+        assertThat(emitter().comments()).containsExactly("connected", "replayed 2");
+    }
+
+    @Test
+    void 밀린_알림을_읽다가_실패하면_표시하지_않고_다음에_다_보낸_뒤_표시한다() {
+        stored(1, 2, 3);
+        when(dao.findAfter(eq(ACCOUNT), anyLong(), anyInt()))
+                .thenThrow(new DataAccessResourceFailureException("db down"))
+                .thenAnswer(inv -> store.stream().filter(n -> n.id() > (long) inv.getArgument(1)).toList());
+
+        service.subscribe(ACCOUNT, 0L);
+        executor.runAll();
+        assertThat(emitter().comments()).containsExactly("connected");
+
+        service.signal(List.of(ACCOUNT));
+        executor.runAll();
+
+        assertThat(emitter().sentIds()).containsExactly(1L, 2L, 3L);
+        assertThat(emitter().comments()).containsExactly("connected", "replayed 3");
+    }
+
     @Test
     void 없는_계좌로_구독하면_거절한다() {
         when(accounts.findBalance(99)).thenReturn(Optional.empty());
@@ -398,6 +445,45 @@ class NotificationPushServiceTest {
                 }
             }
             return ids;
+        }
+
+        /** 주석 줄(":ping" 제외)의 내용. */
+        List<String> comments() {
+            List<String> result = new ArrayList<>();
+            synchronized (raw) {
+                for (String text : raw) {
+                    for (String line : text.split("\n")) {
+                        if (line.startsWith(":") && !line.equals(":ping")) {
+                            result.add(line.substring(1));
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        /** 그 글자를 담은 이벤트가 raw에서 몇 번째인지. */
+        int indexOfText(String text) {
+            synchronized (raw) {
+                for (int i = 0; i < raw.size(); i++) {
+                    if (raw.get(i).contains(text)) {
+                        return i;
+                    }
+                }
+            }
+            return -1;
+        }
+
+        /** 그 알림 번호를 보낸 이벤트가 raw에서 몇 번째인지. */
+        int indexOfId(long id) {
+            synchronized (raw) {
+                for (int i = 0; i < raw.size(); i++) {
+                    if (raw.get(i).contains("id:" + id + "\n")) {
+                        return i;
+                    }
+                }
+            }
+            return -1;
         }
 
         long pings() {

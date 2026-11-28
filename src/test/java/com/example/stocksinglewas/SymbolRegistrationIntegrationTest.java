@@ -154,26 +154,30 @@ class SymbolRegistrationIntegrationTest extends MySqlIntegrationTest {
 
     @Test
     void 같은_종목을_동시에_여러_번_추가해도_하나만_201이고_ACTIVE가_된다() throws Exception {
-        int threads = 8;
-        CyclicBarrier start = new CyclicBarrier(threads);
+        // 같은 키 INSERT 경합에서 InnoDB가 일부를 데드락으로 끝내는 경우가 드물게 나와서, 라운드를 반복해 경합 기회를 늘린다
+        int threads = 16;
         ExecutorService pool = Executors.newFixedThreadPool(threads);
-        List<Future<Integer>> results = new ArrayList<>();
-        for (int i = 0; i < threads; i++) {
-            results.add(pool.submit(() -> {
-                start.await();
-                return addSymbol("NEW1", "신규1");
-            }));
-        }
-        List<Integer> codes = new ArrayList<>();
-        for (Future<Integer> f : results) {
-            codes.add(f.get(15, TimeUnit.SECONDS));
+        for (int round = 1; round <= 5; round++) {
+            String code = "NEW" + round;
+            CyclicBarrier start = new CyclicBarrier(threads);
+            List<Future<Integer>> results = new ArrayList<>();
+            for (int i = 0; i < threads; i++) {
+                results.add(pool.submit(() -> {
+                    start.await();
+                    return addSymbol(code, "신규");
+                }));
+            }
+            List<Integer> codes = new ArrayList<>();
+            for (Future<Integer> f : results) {
+                codes.add(f.get(15, TimeUnit.SECONDS));
+            }
+
+            assertThat(codes).as(code).filteredOn(c -> c == 201).hasSize(1);
+            assertThat(codes).as(code).filteredOn(c -> c == 200).hasSize(threads - 1);
+            assertThat(symbolStatus(code)).isEqualTo("ACTIVE");
+            assertThat(preparer.symbols()).containsOnlyOnce(code);
         }
         pool.shutdown();
-
-        assertThat(codes).filteredOn(c -> c == 201).hasSize(1);
-        assertThat(codes).filteredOn(c -> c == 200).hasSize(threads - 1);
-        assertThat(symbolStatus("NEW1")).isEqualTo("ACTIVE");
-        assertThat(preparer.symbols()).containsOnlyOnce("NEW1");
     }
 
     @Test

@@ -26,6 +26,8 @@ final class SseSubscriber {
     final AtomicBoolean heartbeatDue = new AtomicBoolean();
     volatile boolean closed;
     long lastEventId;
+    /** 구독 직후 밀린 알림을 다 보냈다는 표시(:replayed)를 아직 보내지 않았다. lastEventId처럼 scheduled를 잡은 스레드만 쓴다. */
+    boolean replayMarkerPending = true;
 
     SseSubscriber(long id, long accountId, SseEmitter emitter, long lastEventId) {
         this.id = id;

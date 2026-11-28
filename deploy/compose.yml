@@ -24,6 +24,11 @@ services:
   front:
     image: ${FRONT_IMAGE:?FRONT_IMAGE is required}
     restart: unless-stopped
+    # Nginx worker_rlimit_nofile(16384)이 적용되도록 열린 파일 제한을 명시한다. Docker 기본값은 설치 환경마다 다르다
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     depends_on:
       - app
     ports:

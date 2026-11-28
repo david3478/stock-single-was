@@ -84,6 +84,14 @@ public class SseEmitterRegistry {
                 .data(notification.payload(), MediaType.APPLICATION_JSON));
     }
 
+    /**
+     * 밀린 알림 전송 완료 표시. 구독 직후 한 번, 그때까지 보낸 마지막 알림 번호를 주석으로 보낸다.
+     * 브라우저 EventSource는 주석을 무시한다. 측정 도구가 재연결 전후 알림 구간을 정하는 데 쓴다.
+     */
+    void sendReplayed(SseSubscriber subscriber, long lastEventId) throws IOException {
+        subscriber.emitter.send(SseEmitter.event().comment("replayed " + lastEventId));
+    }
+
     /** 연결유지 신호. 브라우저는 주석 줄을 무시한다. */
     void sendHeartbeat(SseSubscriber subscriber) throws IOException {
         subscriber.emitter.send(SseEmitter.event().comment("ping"));

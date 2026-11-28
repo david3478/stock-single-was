@@ -111,7 +111,31 @@ class SymbolRegistrationServiceTest {
         assertThat(service.addSymbol("NEW1", "신규1")).isEqualTo(Outcome.ALREADY_ACTIVE);
     }
 
+    @Test
+    void 동시_등록이_DB_데드락으로_끝나면_다시_시도해_먼저_들어간_등록을_이어서_처리한다() {
+        // 같은 키를 여러 트랜잭션이 동시에 INSERT하면 InnoDB가 일부를 데드락으로 끝낸다(통합 테스트에서 관찰)
+        when(symbols.insertPreparing("NEW1", "신규1"))
+                .thenThrow(new org.springframework.dao.CannotAcquireLockException("deadlock"))
+                .thenReturn(false);
+        when(symbols.find("NEW1"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(new Symbol("NEW1", "신규1", SymbolStatus.ACTIVE)));
+
+        assertThat(service.addSymbol("NEW1", "신규1")).isEqualTo(Outcome.ALREADY_ACTIVE);
+    }
+
     // --- 실패 ---
+
+    @Test
+    void 데드락이_계속되면_세_번_시도한_뒤_실패한다() {
+        when(symbols.insertPreparing("NEW1", "신규1"))
+                .thenThrow(new org.springframework.dao.CannotAcquireLockException("deadlock"));
+
+        assertThatThrownBy(() -> service.addSymbol("NEW1", "신규1"))
+                .isInstanceOf(org.springframework.dao.CannotAcquireLockException.class);
+        verify(symbols, org.mockito.Mockito.times(3)).insertPreparing("NEW1", "신규1");
+        verify(symbols, never()).activate(anyString());
+    }
 
     @Test
     void 엔진_준비가_실패하면_활성화하지_않아_주문을_받지_않는다() {
