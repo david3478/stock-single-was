@@ -14,7 +14,9 @@ $MYSQL < "$here/schema.sql"
   echo "DELETE FROM measure.k6_runs WHERE run='$RUN'; DELETE FROM measure.k6_orders WHERE run='$RUN';"
   echo "DELETE FROM measure.sse_events WHERE run='$RUN'; DELETE FROM measure.sse_markers WHERE run='$RUN';"
 
-  awk -v run="$RUN" '/^START /{printf "INSERT INTO measure.k6_runs VALUES (\x27%s\x27,%s,%s);\n", run, $2, $3}' "$K6LOG"
+  awk -v run="$RUN" '/^START /{printf "INSERT INTO measure.k6_runs (run, start_ms, warmup_s) VALUES (\x27%s\x27,%s,%s);\n", run, $2, $3}' "$K6LOG"
+  # QAS 3: PLANNED <판정 대상 계획 수>
+  awk -v run="$RUN" '/^PLANNED /{printf "UPDATE measure.k6_runs SET planned = %s WHERE run = \x27%s\x27;\n", $2, run}' "$K6LOG"
 
   # ORD <순번> <계좌> <clientOrderId> <종목> <보낸 ms> <HTTP> <주문번호 또는 -> <응답 ms>
   awk -v run="$RUN" -v b=$BATCH '/^ORD /{

@@ -6,7 +6,8 @@ CREATE DATABASE IF NOT EXISTS measure DEFAULT CHARACTER SET utf8mb4;
 CREATE TABLE IF NOT EXISTS measure.k6_runs (
   run       VARCHAR(40) NOT NULL PRIMARY KEY,
   start_ms  BIGINT      NOT NULL,
-  warmup_s  INT         NOT NULL
+  warmup_s  INT         NOT NULL,
+  planned   INT         NULL      -- 계획한 판정 대상 주문 수(QAS 3 PLANNED 줄). 보낸 수와의 차이가 미전송
 );
 
 -- k6가 보낸 측정 대상 주문(주문마다 한 줄). http_status 0 = 연결 실패·시간 초과

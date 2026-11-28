@@ -29,20 +29,22 @@ const ORDER_PARAMS = { headers: { 'Content-Type': 'application/json' }, timeout:
 const ordersNot202 = new Counter('orders_not_202');
 const queriesNot200 = new Counter('queries_not_200');
 
-function arrival(exec, rate) {
+function arrival(exec, rate, maxVuPerRate) {
   return {
     executor: 'constant-arrival-rate', exec, rate, timeUnit: '1s', duration: DURATION,
-    // 응답이 늦어지면 VU가 응답을 기다리며 묶인다. 미전송 원인 판정(plan 1.7)을 위해 최대 VU를 넉넉히 두고 사용량을 기록한다
-    preAllocatedVUs: Math.max(50, Math.ceil(rate / 5)), maxVUs: Math.max(500, rate * 3),
+    // 응답이 늦어지면 VU가 응답을 기다리며 묶인다. VU마다 JS 실행 환경이 있어 너무 많이 만들면 생성기 메모리가 먼저 바닥난다.
+    // 그래서 최대 VU를 "평균 응답이 이만큼 늦어져도 버티는" 수준으로 두고, 그보다 느려져 VU가 모자라면 미전송(앱 응답 지연 원인)으로 센다(plan 1.7).
+    // 주문: rate × 2(평균 2초), 조회: rate × 0.5(평균 0.5초). 측정 때 생성기 메모리 사용량을 함께 기록한다
+    preAllocatedVUs: Math.max(50, Math.ceil(rate / 5)), maxVUs: Math.max(200, Math.ceil(rate * maxVuPerRate)),
   };
 }
 
 export const options = {
   scenarios: {
-    orders: arrival('placeBuy', ORDER_RATE),
-    balance: arrival('balance', BALANCE_RATE),
-    holdings: arrival('holdings', HOLDINGS_RATE),
-    history: arrival('history', HISTORY_RATE),
+    orders: arrival('placeBuy', ORDER_RATE, 2),
+    balance: arrival('balance', BALANCE_RATE, 0.5),
+    holdings: arrival('holdings', HOLDINGS_RATE, 0.5),
+    history: arrival('history', HISTORY_RATE, 0.5),
   },
   summaryTrendStats: ['avg', 'p(50)', 'p(95)', 'p(99)', 'max'],
 };
